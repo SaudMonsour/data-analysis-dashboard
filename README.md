@@ -63,7 +63,3 @@ The application uses an object-oriented architecture with clear separation of co
 - numpy
 - scipy
 - openpyxl
-
-## License
-
-This project is licensed under the MIT License.
