@@ -1,5 +1,7 @@
 # Data Analysis Dashboard
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://saudmonsour-data-analysis-dashboard-app-uu96ud.streamlit.app/)
+
 A professional, interactive web application for exploring and analyzing your data. Built with Streamlit and designed for both technical and non-technical users.
 
 ## What This Does
@@ -38,28 +40,29 @@ Upload a CSV or Excel file through the sidebar and explore the different section
 
 ## Project Structure
 
-```
+```text
 data-analysis-dashboard/
-├── app.py                  # Application entry point
-├── requirements.txt        # Python dependencies
-├── sample_data.csv        # Example dataset
+├── app.py                # Application entry point
+├── requirements.txt      # Python dependencies
+├── sample_data.csv       # Example dataset
 └── src/
-    ├── dashboard.py       # Main UI and orchestration
-    ├── data_manager.py    # Data loading and cleaning
-    ├── stats_manager.py   # Statistical calculations
-    └── visualizer.py      # Chart creation
+    ├── dashboard.py      # Main UI and orchestration
+    ├── data_manager.py   # Data loading and cleaning
+    ├── stats_manager.py  # Statistical calculations
+    └── visualizer.py     # Chart creation
 ```
+
 
 ## Technical Details
 
 The application uses an object-oriented architecture with clear separation of concerns. All calculations use industry-standard methods including IQR for outlier detection, Pearson's correlation coefficient, and Shapiro-Wilk normality tests.
 
+
+
 ## Requirements
 
-- Python 3.8+
-- streamlit
-- pandas
-- plotly
-- numpy
-- scipy
-- openpyxl
+* **Python:** 3.8+
+* **Framework:** Streamlit
+* **Data Libraries:** pandas, numpy, scipy
+* **Visualization:** plotly
+* **Excel Support:** openpyxl
