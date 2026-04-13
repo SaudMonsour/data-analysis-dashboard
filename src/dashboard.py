@@ -218,33 +218,20 @@ class DashboardApp:
 
                 if page == "Exploration":
                     st.markdown('<div style="border-top:1px solid #1e293b;margin:1rem 0;"></div>', unsafe_allow_html=True)
-                    st.markdown('<p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#475569;margin:0 0 .5rem;">Chart Settings</p>', unsafe_allow_html=True)
+                    st.markdown('<p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#475569;margin:0 0 .5rem;">Dashboard Filter</p>', unsafe_allow_html=True)
                     num_cols = info['numeric_columns']
                     cat_cols = info['categorical_columns']
-                    all_cols = info['column_names']
-                    chart_type = st.selectbox("Chart Type",
-                        ["Histogram", "Scatter Plot", "Box Plot",
-                         "Bar Chart", "Line Chart", "Correlation Heatmap"])
-                    st.session_state['chart_type'] = chart_type
-                    if chart_type == "Histogram":
-                        st.session_state['chart_cols'] = st.selectbox("Column", num_cols)
-                    elif chart_type in ("Scatter Plot", "Line Chart"):
-                        c1, c2 = st.columns(2)
-                        xc = c1.selectbox("X", all_cols if chart_type == "Line Chart" else num_cols, key='cx')
-                        yc = c2.selectbox("Y", num_cols, key='cy')
-                        st.session_state['chart_cols'] = (xc, yc)
-                    elif chart_type == "Box Plot":
-                        st.session_state['chart_cols'] = st.multiselect(
-                            "Columns", num_cols,
-                            default=num_cols[:min(4, len(num_cols))], max_selections=6)
-                    elif chart_type == "Bar Chart":
-                        cats = cat_cols if cat_cols else all_cols
-                        c1, c2 = st.columns(2)
-                        xc = c1.selectbox("Category", cats, key='bx')
-                        yc = c2.selectbox("Value",    num_cols, key='by')
-                        st.session_state['chart_cols'] = (xc, yc)
-                    elif chart_type == "Correlation Heatmap":
-                        st.session_state['chart_cols'] = None
+                    # Optional: pin a categorical column as the primary group dimension
+                    if cat_cols:
+                        st.session_state['dash_group'] = st.selectbox(
+                            "Group Dimension", ["None"] + cat_cols, key='dash_grp')
+                    else:
+                        st.session_state['dash_group'] = "None"
+                    if num_cols:
+                        st.session_state['dash_kpi'] = st.selectbox(
+                            "Primary KPI", num_cols, key='dash_kpi_sel')
+                    else:
+                        st.session_state['dash_kpi'] = None
 
     # ── Topbar ────────────────────────────────────────────────────
 
@@ -339,52 +326,208 @@ class DashboardApp:
                 st.plotly_chart(self.viz.create_cv_chart(var_df), use_container_width=True)
 
     # ──────────────────────────────────────────────────────────────
-    # PAGE: EXPLORATION
+    # PAGE: EXPLORATION  (auto-generated BI dashboard)
     # ──────────────────────────────────────────────────────────────
 
     def page_exploration(self):
         if self.sm is None:
-            st.info("Upload a dataset to begin exploration.")
+            st.info("Upload a dataset to generate the dashboard.")
             return
 
-        chart_type = st.session_state.get('chart_type', 'Histogram')
-        chart_cols = st.session_state.get('chart_cols', None)
-        self._sec(f"Interactive Chart — {chart_type}")
-        try:
-            if chart_type == "Correlation Heatmap":
-                corr = self.sm.get_correlations()
-                if corr is not None:
-                    st.plotly_chart(self.viz.create_heatmap(corr), use_container_width=True)
-            elif chart_type == "Histogram" and chart_cols:
-                st.plotly_chart(self.viz.create_histogram(self.dm.data, chart_cols), use_container_width=True)
-                st.info(self.sm.generate_distribution_insight(chart_cols))
-            elif chart_type == "Scatter Plot" and chart_cols:
-                st.plotly_chart(self.viz.create_scatter(self.dm.data, chart_cols[0], chart_cols[1]), use_container_width=True)
-            elif chart_type == "Box Plot" and chart_cols:
-                st.plotly_chart(self.viz.create_box_plot(self.dm.data, chart_cols), use_container_width=True)
-            elif chart_type == "Bar Chart" and chart_cols:
-                st.plotly_chart(self.viz.create_bar_chart(self.dm.data, chart_cols[0], chart_cols[1]), use_container_width=True)
-            elif chart_type == "Line Chart" and chart_cols:
-                st.plotly_chart(self.viz.create_line_chart(self.dm.data, chart_cols[0], chart_cols[1]), use_container_width=True)
+        info      = self.dm.get_data_info()
+        num_cols  = info['numeric_columns']
+        cat_cols  = info['categorical_columns']
+        date_cols = self.dm.identify_date_columns()
+        df        = self.dm.data
+        group_col = st.session_state.get('dash_group', 'None')
+        kpi_col   = st.session_state.get('dash_kpi', num_cols[0] if num_cols else None)
+
+        import plotly.graph_objects as go
+
+        # ── SECTION 1: KPI Strip ──────────────────────────────────
+        self._sec("Key Metrics")
+        kpi_html = '<div class="kpi-row">'
+        for col in num_cols[:8]:
+            val  = df[col].sum()
+            mean = df[col].mean()
+            label = 'Total' if col.lower() not in ('age','year','rate','ratio','score','pct','percent') else 'Average'
+            display = df[col].sum() if label == 'Total' else mean
+            if abs(display) >= 1_000_000:
+                fmt = f"{display/1_000_000:.2f}M"
+            elif abs(display) >= 1_000:
+                fmt = f"{display/1_000:.1f}K"
             else:
-                st.info("Configure chart settings in the sidebar.")
-        except Exception as e:
-            st.error(f"Chart error: {e}")
+                fmt = f"{display:,.2f}"
+            kpi_html += self._kpi(col[:22], fmt, f"Mean: {mean:,.2f}")
+        kpi_html += '</div>'
+        st.markdown(kpi_html, unsafe_allow_html=True)
 
         st.markdown("---")
-        self._sec("Column Summary")
-        c1, c2 = st.columns([1, 2])
-        with c1:
-            type_counts = self.dm.data.dtypes.astype(str).value_counts()
-            fig = self.viz.create_pie_chart(type_counts.index.tolist(),
-                                             type_counts.values.tolist(), "Column Types")
-            fig.update_layout(height=280, margin=dict(t=10, b=30, l=0, r=0))
-            st.plotly_chart(fig, use_container_width=True)
-        with c2:
-            master = self.sm.get_comprehensive_summary()
-            if not master.empty:
-                master['Missing (%)'] = master['Missing (%)'].map('{:.1f}%'.format)
-                st.dataframe(master, use_container_width=True, hide_index=True, height=280)
+
+        # ── SECTION 2: Primary KPI breakdown by group ─────────────
+        if kpi_col and group_col and group_col != 'None':
+            self._sec(f"{kpi_col} Breakdown by {group_col}")
+            top_cats = df[group_col].value_counts().head(20).index
+            grp_df   = (df[df[group_col].isin(top_cats)]
+                        .groupby(group_col)[kpi_col]
+                        .sum()
+                        .reset_index()
+                        .sort_values(kpi_col, ascending=False))
+            c1, c2 = st.columns(2)
+            with c1:
+                fig = go.Figure(go.Bar(
+                    x=grp_df[group_col], y=grp_df[kpi_col],
+                    marker=dict(color=grp_df[kpi_col], colorscale='Blues',
+                                line=dict(color='#ffffff', width=0.6)),
+                    text=grp_df[kpi_col].map(lambda v: f"{v:,.0f}"),
+                    textposition='outside',
+                    textfont=dict(color='#475569', size=10),
+                ))
+                fig.update_layout(
+                    title=f"Total {kpi_col} by {group_col}",
+                    xaxis_title=group_col, yaxis_title=kpi_col,
+                    paper_bgcolor='#ffffff', plot_bgcolor='#ffffff',
+                    font=dict(family='Inter, system-ui, sans-serif', color='#0f172a'),
+                    height=380, margin=dict(l=50, r=20, t=50, b=60),
+                    xaxis=dict(tickangle=-30, gridcolor='#f1f5f9'),
+                    yaxis=dict(gridcolor='#f1f5f9'),
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            with c2:
+                total = grp_df[kpi_col].sum()
+                labels = grp_df[group_col].tolist()[:12]
+                values = grp_df[kpi_col].tolist()[:12]
+                fig2 = self.viz.create_pie_chart(labels, values, f"{kpi_col} Share by {group_col}")
+                fig2.update_layout(height=380)
+                st.plotly_chart(fig2, use_container_width=True)
+            st.markdown("---")
+
+        # ── SECTION 3: Numeric distributions (histograms, 3-up) ───
+        if num_cols:
+            self._sec("Numeric Distributions")
+            cols_to_show = num_cols[:9]
+            rows = [cols_to_show[i:i+3] for i in range(0, len(cols_to_show), 3)]
+            for row_cols in rows:
+                grid = st.columns(len(row_cols))
+                for col_widget, col_name in zip(grid, row_cols):
+                    with col_widget:
+                        try:
+                            fig = self.viz.create_histogram(df, col_name)
+                            fig.update_layout(height=280, margin=dict(l=40, r=15, t=45, b=40),
+                                              showlegend=False)
+                            st.plotly_chart(fig, use_container_width=True)
+                        except Exception:
+                            pass
+            st.markdown("---")
+
+        # ── SECTION 4: Box plot comparison ────────────────────────
+        if len(num_cols) >= 2:
+            self._sec("Distribution Spread — Box Plot")
+            box_cols = num_cols[:10]
+            try:
+                fig = self.viz.create_box_plot(df, box_cols)
+                fig.update_layout(height=360)
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception:
+                pass
+            st.markdown("---")
+
+        # ── SECTION 5: Categorical breakdowns ─────────────────────
+        if cat_cols:
+            self._sec("Category Distributions")
+            show_cats = [c for c in cat_cols if df[c].nunique() <= 40][:6]
+            if show_cats:
+                rows = [show_cats[i:i+2] for i in range(0, len(show_cats), 2)]
+                for row_cats in rows:
+                    grid = st.columns(len(row_cats))
+                    for col_widget, cat_name in zip(grid, row_cats):
+                        with col_widget:
+                            try:
+                                top20 = df[cat_name].value_counts().head(20)
+                                if top20.nunique() <= 7:
+                                    fig = self.viz.create_pie_chart(
+                                        top20.index.tolist(),
+                                        top20.values.tolist(),
+                                        cat_name)
+                                    fig.update_layout(height=320, margin=dict(t=40, b=30, l=10, r=10))
+                                else:
+                                    sorted_df = top20.reset_index()
+                                    sorted_df.columns = ['Value', 'Count']
+                                    fig = self.viz.create_horizontal_bar_chart(
+                                        sorted_df.sort_values('Count'),
+                                        x_col='Count', y_col='Value',
+                                        title=cat_name)
+                                    fig.update_layout(height=320, margin=dict(l=100, r=20, t=45, b=30))
+                                st.plotly_chart(fig, use_container_width=True)
+                            except Exception:
+                                pass
+            if num_cols and cat_cols:
+                self._sec("Numeric × Category Heatmap")
+                try:
+                    pivot_cat = show_cats[0] if show_cats else cat_cols[0]
+                    pivot_nums = num_cols[:8]
+                    pivot_df = df.groupby(pivot_cat)[pivot_nums].mean()
+                    # Normalise each column 0-1 for visual comparison
+                    normed = (pivot_df - pivot_df.min()) / (pivot_df.max() - pivot_df.min() + 1e-9)
+                    fig = self.viz.create_heatmap(normed)
+                    fig.update_layout(
+                        title=f"Normalised KPIs by {pivot_cat} (0 = min, 1 = max)",
+                        height=max(300, len(pivot_df) * 28 + 100))
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception:
+                    pass
+            st.markdown("---")
+
+        # ── SECTION 6: Time series ────────────────────────────────
+        if date_cols and num_cols:
+            self._sec("Time Series Trends")
+            date_col = date_cols[0]
+            show_ts  = num_cols[:4]
+            try:
+                ts_cols = st.columns(min(2, len(show_ts)))
+                for i, (col_w, ts_col) in enumerate(zip(ts_cols * 4, show_ts[:4])):
+                    with col_w:
+                        ts_data = self.sm.get_time_series_data(date_col, ts_col, freq='M')
+                        if not ts_data.empty:
+                            fig = self.viz.create_time_series_chart(ts_data, date_col, ts_col)
+                            fig.update_layout(height=300)
+                            st.plotly_chart(fig, use_container_width=True)
+            except Exception:
+                pass
+            st.markdown("---")
+
+        # ── SECTION 7: Scatter matrix (top 4 numeric) ─────────────
+        if len(num_cols) >= 2:
+            self._sec("Scatter Relationships")
+            scatter_cols = num_cols[:4]
+            if len(scatter_cols) >= 2:
+                pairs = [(scatter_cols[i], scatter_cols[j])
+                         for i in range(len(scatter_cols))
+                         for j in range(i+1, len(scatter_cols))][:6]
+                rows = [pairs[i:i+3] for i in range(0, len(pairs), 3)]
+                for row_pairs in rows:
+                    grid = st.columns(len(row_pairs))
+                    for col_w, (xc, yc) in zip(grid, row_pairs):
+                        with col_w:
+                            try:
+                                fig = self.viz.create_scatter(df, xc, yc)
+                                fig.update_layout(height=280, margin=dict(l=50, r=15, t=45, b=40))
+                                st.plotly_chart(fig, use_container_width=True)
+                            except Exception:
+                                pass
+            st.markdown("---")
+
+        # ── SECTION 8: Correlation heatmap ────────────────────────
+        if len(num_cols) >= 3:
+            self._sec("Correlation Matrix")
+            try:
+                corr = self.sm.get_correlations()
+                if corr is not None:
+                    fig = self.viz.create_heatmap(corr)
+                    fig.update_layout(height=500)
+                    st.plotly_chart(fig, use_container_width=True)
+            except Exception:
+                pass
 
     # ──────────────────────────────────────────────────────────────
     # PAGE: STATISTICAL ANALYSIS
