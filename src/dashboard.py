@@ -14,6 +14,7 @@ class DashboardApp:
         """Initialize the dashboard components."""
         st.set_page_config(
             page_title="Data Analysis Dashboard",
+            page_icon="📊",
             layout="wide",
             initial_sidebar_state="expanded"
         )
@@ -37,28 +38,170 @@ class DashboardApp:
         """Apply custom CSS styling."""
         st.markdown("""
             <style>
-            .stApp {
-                background-color: #0e1117;
-                color: #e2e8f0;
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+            /* ── Global ── */
+            html, body, .stApp {
+                background-color: #f5f6fa !important;
+                color: #1a1a2e !important;
+                font-family: 'Inter', sans-serif !important;
             }
-            .stButton>button {
-                background-color: #667eea;
-                color: white;
-                border-radius: 8px;
-                border: none;
-                padding: 0.5rem 1rem;
-                transition: all 0.3s ease;
+
+            /* ── Sidebar ── */
+            [data-testid="stSidebar"] {
+                background-color: #ffffff !important;
+                border-right: 1px solid #e2e6ea !important;
             }
-            .stButton>button:hover {
-                background-color: #764ba2;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            [data-testid="stSidebar"] .stMarkdown,
+            [data-testid="stSidebar"] label,
+            [data-testid="stSidebar"] p {
+                color: #1a1a2e !important;
             }
-            .metric-card {
-                background-color: #1a202c;
-                padding: 1.5rem;
+
+            /* ── Sidebar header ── */
+            [data-testid="stSidebar"] h1 {
+                font-size: 1.3rem !important;
+                font-weight: 700 !important;
+                letter-spacing: 0.02em !important;
+                color: #1a1a2e !important;
+                padding-bottom: 0.25rem;
+            }
+
+            /* ── Buttons — solid black ── */
+            .stButton > button {
+                background-color: #111111 !important;
+                color: #ffffff !important;
+                border: none !important;
+                border-radius: 6px !important;
+                padding: 0.45rem 1.2rem !important;
+                font-weight: 600 !important;
+                font-size: 0.85rem !important;
+                letter-spacing: 0.03em !important;
+                transition: background 0.2s ease, transform 0.1s ease !important;
+            }
+            .stButton > button:hover {
+                background-color: #333333 !important;
+                transform: translateY(-1px) !important;
+            }
+            .stButton > button:active {
+                transform: translateY(0) !important;
+            }
+
+            /* ── Download button ── */
+            [data-testid="stDownloadButton"] > button {
+                background-color: #111111 !important;
+                color: #ffffff !important;
+                border: none !important;
+                border-radius: 6px !important;
+                font-weight: 600 !important;
+            }
+            [data-testid="stDownloadButton"] > button:hover {
+                background-color: #333333 !important;
+            }
+
+            /* ── Metric cards ── */
+            [data-testid="stMetric"] {
+                background-color: #ffffff !important;
+                border: 1px solid #e2e6ea !important;
+                border-radius: 10px !important;
+                padding: 1rem 1.25rem !important;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+            }
+            [data-testid="stMetricLabel"] {
+                color: #6b7280 !important;
+                font-size: 0.78rem !important;
+                font-weight: 500 !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.06em !important;
+            }
+            [data-testid="stMetricValue"] {
+                color: #111111 !important;
+                font-size: 1.65rem !important;
+                font-weight: 700 !important;
+            }
+
+            /* ── Section headings ── */
+            h1, h2, h3, h4 {
+                color: #111111 !important;
+                font-weight: 700 !important;
+            }
+            h2 { font-size: 1.4rem !important; }
+            h3 { font-size: 1.1rem !important; }
+
+            /* ── Tabs ── */
+            [data-testid="stTabs"] [role="tab"] {
+                font-weight: 600 !important;
+                color: #6b7280 !important;
+                font-size: 0.85rem !important;
+                letter-spacing: 0.02em !important;
+            }
+            [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+                color: #111111 !important;
+                border-bottom: 2px solid #111111 !important;
+            }
+
+            /* ── Dataframe / Table ── */
+            [data-testid="stDataFrame"] {
+                border: 1px solid #e2e6ea !important;
+                border-radius: 8px !important;
+                overflow: hidden !important;
+            }
+
+            /* ── Input / Select widgets ── */
+            .stSelectbox > div > div,
+            .stMultiSelect > div > div,
+            .stNumberInput > div > div > input {
+                background-color: #ffffff !important;
+                border: 1px solid #d1d5db !important;
+                border-radius: 6px !important;
+                color: #111111 !important;
+            }
+
+            /* ── Expander ── */
+            [data-testid="stExpander"] {
+                background-color: #ffffff !important;
+                border: 1px solid #e2e6ea !important;
+                border-radius: 8px !important;
+            }
+
+            /* ── Info / Warning / Success boxes ── */
+            [data-testid="stNotification"],
+            .stAlert {
+                border-radius: 8px !important;
+            }
+
+            /* ── Horizontal divider ── */
+            hr {
+                border-color: #e2e6ea !important;
+                margin: 1.5rem 0 !important;
+            }
+
+            /* ── Main content area ── */
+            .main .block-container {
+                padding-top: 2rem !important;
+                padding-bottom: 2rem !important;
+                max-width: 1400px !important;
+            }
+
+            /* ── Page title banner ── */
+            .dashboard-header {
+                background: #ffffff;
+                border: 1px solid #e2e6ea;
                 border-radius: 10px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                border: 1px solid #2d3748;
+                padding: 1.5rem 2rem;
+                margin-bottom: 1.5rem;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            }
+            .dashboard-header h1 {
+                margin: 0 !important;
+                font-size: 1.6rem !important;
+                font-weight: 700 !important;
+                color: #111111 !important;
+            }
+            .dashboard-header p {
+                margin: 0.25rem 0 0 0 !important;
+                color: #6b7280 !important;
+                font-size: 0.9rem !important;
             }
             </style>
         """, unsafe_allow_html=True)
@@ -66,7 +209,8 @@ class DashboardApp:
     def render_sidebar(self):
         """Render the sidebar for data upload and settings."""
         with st.sidebar:
-            st.title("Data Dashboard")
+            st.markdown("### 📊 Data Dashboard")
+            st.caption("Professional Analytics Platform")
             st.markdown("---")
             
             # File Upload
@@ -543,6 +687,14 @@ class DashboardApp:
         self.render_sidebar()
         
         selected_columns, chart_type = self.render_viz_settings()
+
+        # Professional page header
+        st.markdown("""
+            <div class="dashboard-header">
+                <h1>📊 Data Analysis Dashboard</h1>
+                <p>Upload a dataset to unlock automated insights, statistical analysis, and interactive visualisations.</p>
+            </div>
+        """, unsafe_allow_html=True)
         
         # Render main dashboard content
         if self.data_manager.data is not None:
@@ -605,18 +757,34 @@ class DashboardApp:
                     mime='text/csv',
                 )
         else:
-            # Welcome message
-            st.info("""
-                **Welcome to the Data Analysis Dashboard!**
-                
-                Get started by uploading your dataset using the sidebar on the left.
-                
-                **Features:**
-                - Automatic data cleaning and preprocessing
-                - Key metrics and statistics
-                - Interactive correlation heatmap
-                - Multiple visualization types
-                - Modern, professional design
-                
-                **Supported formats:** CSV, Excel (.xlsx, .xls)
-            """)
+            # Welcome screen
+            st.markdown("""
+                <div style="background:#ffffff;border:1px solid #e2e6ea;border-radius:12px;padding:3rem 2.5rem;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06);margin-top:1rem;">
+                    <div style="font-size:3.5rem;margin-bottom:1rem;">📂</div>
+                    <h2 style="color:#111111;font-size:1.6rem;font-weight:700;margin-bottom:0.5rem;">No dataset loaded yet</h2>
+                    <p style="color:#6b7280;font-size:1rem;max-width:500px;margin:0 auto 2rem;">Upload a CSV or Excel file using the sidebar to begin your analysis.</p>
+                    <div style="display:flex;justify-content:center;gap:2rem;flex-wrap:wrap;margin-top:1.5rem;">
+                        <div style="text-align:left;background:#f5f6fa;border-radius:8px;padding:1rem 1.5rem;min-width:180px;">
+                            <div style="font-size:1.4rem;">🧹</div>
+                            <div style="font-weight:600;color:#111111;margin-top:0.4rem;">Auto Cleaning</div>
+                            <div style="color:#6b7280;font-size:0.82rem;margin-top:0.2rem;">Duplicates &amp; missing values handled automatically</div>
+                        </div>
+                        <div style="text-align:left;background:#f5f6fa;border-radius:8px;padding:1rem 1.5rem;min-width:180px;">
+                            <div style="font-size:1.4rem;">📈</div>
+                            <div style="font-weight:600;color:#111111;margin-top:0.4rem;">Statistical Tests</div>
+                            <div style="color:#6b7280;font-size:0.82rem;margin-top:0.2rem;">Normality, T-tests, and correlation analysis</div>
+                        </div>
+                        <div style="text-align:left;background:#f5f6fa;border-radius:8px;padding:1rem 1.5rem;min-width:180px;">
+                            <div style="font-size:1.4rem;">🎨</div>
+                            <div style="font-weight:600;color:#111111;margin-top:0.4rem;">Interactive Charts</div>
+                            <div style="color:#6b7280;font-size:0.82rem;margin-top:0.2rem;">Histograms, scatter plots, heatmaps &amp; more</div>
+                        </div>
+                        <div style="text-align:left;background:#f5f6fa;border-radius:8px;padding:1rem 1.5rem;min-width:180px;">
+                            <div style="font-size:1.4rem;">🤝</div>
+                            <div style="font-weight:600;color:#111111;margin-top:0.4rem;">Decision Support</div>
+                            <div style="color:#6b7280;font-size:0.82rem;margin-top:0.2rem;">Outlier detection, filters, regression &amp; grouping</div>
+                        </div>
+                    </div>
+                    <p style="color:#9ca3af;font-size:0.8rem;margin-top:2rem;">Supported formats: CSV · XLSX · XLS</p>
+                </div>
+            """, unsafe_allow_html=True)

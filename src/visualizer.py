@@ -11,20 +11,28 @@ class Visualizer:
     with consistent styling and modern aesthetics.
     """
     
-    # Color scheme for consistent styling
-    PRIMARY_COLOR = '#667eea'  # Vibrant purple
-    SECONDARY_COLOR = '#764ba2'  # Deep purple
-    ACCENT_COLOR = '#f093fb'  # Pink accent
-    BACKGROUND_COLOR = '#0e1117'
-    GRID_COLOR = '#2d3748'
-    
+    # Color scheme — vibrant professional palette on white background
+    PRIMARY_COLOR = '#2563eb'    # Royal blue
+    SECONDARY_COLOR = '#16a34a'  # Emerald green
+    ACCENT_COLOR = '#dc2626'     # Crimson red
+    TERTIARY_COLOR = '#d97706'   # Amber
+    PURPLE_COLOR = '#7c3aed'     # Violet
+    TEAL_COLOR = '#0891b2'       # Teal
+    BACKGROUND_COLOR = '#ffffff'
+    PAPER_COLOR = '#ffffff'
+    GRID_COLOR = '#e5e7eb'
+    FONT_COLOR = '#111111'
+
+    CHART_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed',
+                    '#0891b2', '#db2777', '#65a30d', '#ea580c', '#0f766e']
+
     def __init__(self):
         """Initialize the Visualizer with default settings."""
-        self.template = 'plotly_dark'
+        self.template = 'plotly_white'
         
     def _apply_theme(self, fig: go.Figure) -> go.Figure:
         """
-        Apply consistent theme to all figures.
+        Apply consistent light theme to all figures.
         
         Args:
             fig: Plotly figure object
@@ -34,17 +42,36 @@ class Visualizer:
         """
         fig.update_layout(
             template=self.template,
-            paper_bgcolor=self.BACKGROUND_COLOR,
+            paper_bgcolor=self.PAPER_COLOR,
             plot_bgcolor=self.BACKGROUND_COLOR,
-            font=dict(family='Inter, sans-serif', color='#e2e8f0'),
-            margin=dict(l=40, r=40, t=60, b=40),
+            font=dict(family='Inter, sans-serif', color=self.FONT_COLOR, size=12),
+            title_font=dict(family='Inter, sans-serif', color='#111111', size=15),
+            margin=dict(l=50, r=40, t=70, b=50),
             hoverlabel=dict(
-                bgcolor='#1a202c',
+                bgcolor='#ffffff',
+                bordercolor='#e2e6ea',
                 font_size=12,
-                font_family='Inter, sans-serif'
+                font_family='Inter, sans-serif',
+                font_color='#111111'
             ),
-            xaxis=dict(gridcolor=self.GRID_COLOR),
-            yaxis=dict(gridcolor=self.GRID_COLOR)
+            xaxis=dict(
+                gridcolor=self.GRID_COLOR,
+                linecolor='#d1d5db',
+                tickfont=dict(color='#374151'),
+                title_font=dict(color='#374151')
+            ),
+            yaxis=dict(
+                gridcolor=self.GRID_COLOR,
+                linecolor='#d1d5db',
+                tickfont=dict(color='#374151'),
+                title_font=dict(color='#374151')
+            ),
+            legend=dict(
+                bgcolor='rgba(255,255,255,0.9)',
+                bordercolor='#e2e6ea',
+                borderwidth=1,
+                font=dict(color='#374151')
+            )
         )
         return fig
     
@@ -98,9 +125,9 @@ class Visualizer:
             name='Distribution',
             marker=dict(
                 color=self.PRIMARY_COLOR,
-                line=dict(color=self.ACCENT_COLOR, width=1)
+                line=dict(color='#ffffff', width=0.8)
             ),
-            opacity=0.7
+            opacity=0.85
         ))
         
         # Add mean line
@@ -109,6 +136,7 @@ class Visualizer:
             x=mean_val,
             line_dash="dash",
             line_color=self.ACCENT_COLOR,
+            line_width=2,
             annotation_text=f"Mean: {mean_val:.2f}",
             annotation_position="top"
         )
@@ -118,7 +146,8 @@ class Visualizer:
         fig.add_vline(
             x=median_val,
             line_dash="dot",
-            line_color="#48bb78",
+            line_color=self.SECONDARY_COLOR,
+            line_width=2,
             annotation_text=f"Median: {median_val:.2f}",
             annotation_position="bottom"
         )
@@ -156,15 +185,13 @@ class Visualizer:
             marker=dict(
                 size=8,
                 color=self.PRIMARY_COLOR,
-                line=dict(width=1, color=self.ACCENT_COLOR)
+                opacity=0.75,
+                line=dict(width=1, color='#ffffff')
             )
         ))
         
         # Add manual trend line using numpy
         try:
-            x_numeric = pd.to_numeric(data[x_col], errors='coerce').dropna()
-            y_numeric = pd.to_numeric(data[y_col], errors='coerce').dropna()
-            
             # Get common valid indices
             valid_idx = data[x_col].notna() & data[y_col].notna()
             x_vals = pd.to_numeric(data.loc[valid_idx, x_col], errors='coerce')
@@ -183,7 +210,7 @@ class Visualizer:
                     y=y_trend,
                     mode='lines',
                     name='Trend Line',
-                    line=dict(color=self.ACCENT_COLOR, width=3, dash='dash')
+                    line=dict(color=self.ACCENT_COLOR, width=2.5, dash='dash')
                 ))
         except Exception:
             pass  # Skip trend line if there's an error
@@ -216,8 +243,8 @@ class Visualizer:
             y=data[y_col],
             mode='lines+markers',
             name=y_col,
-            line=dict(color=self.PRIMARY_COLOR, width=3),
-            marker=dict(size=6, color=self.ACCENT_COLOR)
+            line=dict(color=self.PRIMARY_COLOR, width=2.5),
+            marker=dict(size=6, color=self.PRIMARY_COLOR, line=dict(color='#ffffff', width=1))
         ))
         
         fig.update_layout(
@@ -243,14 +270,14 @@ class Visualizer:
         """
         fig = go.Figure()
         
-        colors = [self.PRIMARY_COLOR, self.SECONDARY_COLOR, self.ACCENT_COLOR, '#48bb78', '#ed8936']
-        
         for idx, column in enumerate(columns):
             fig.add_trace(go.Box(
                 y=data[column],
                 name=column,
-                marker_color=colors[idx % len(colors)],
-                boxmean='sd'
+                marker_color=self.CHART_COLORS[idx % len(self.CHART_COLORS)],
+                boxmean='sd',
+                marker=dict(outliercolor=self.ACCENT_COLOR, size=5),
+                line=dict(width=1.5)
             ))
         
         fig.update_layout(
@@ -283,11 +310,12 @@ class Visualizer:
                 y=aggregated[y_col],
                 marker=dict(
                     color=aggregated[y_col],
-                    colorscale=[[0, self.SECONDARY_COLOR], [1, self.ACCENT_COLOR]],
-                    line=dict(color=self.ACCENT_COLOR, width=1.5)
+                    colorscale='Blues',
+                    line=dict(color='#ffffff', width=0.8)
                 ),
                 text=np.round(aggregated[y_col], 2),
-                textposition='outside'
+                textposition='outside',
+                textfont=dict(color='#374151', size=11)
             )
         ])
         
@@ -320,11 +348,12 @@ class Visualizer:
                 orientation='h',
                 marker=dict(
                     color=data[x_col],
-                    colorscale=[[0, self.SECONDARY_COLOR], [1, self.ACCENT_COLOR]],
-                    line=dict(color=self.ACCENT_COLOR, width=1)
+                    colorscale='Teal',
+                    line=dict(color='#ffffff', width=0.8)
                 ),
                 text=np.round(data[x_col], 2),
-                textposition='auto'
+                textposition='auto',
+                textfont=dict(color='#374151', size=11)
             )
         ])
         
@@ -354,8 +383,12 @@ class Visualizer:
             labels=labels,
             values=values,
             hole=.4,
-            marker=dict(colors=[self.PRIMARY_COLOR, self.SECONDARY_COLOR, self.ACCENT_COLOR, '#48bb78', '#ed8936']),
-            textinfo='label+percent'
+            marker=dict(
+                colors=self.CHART_COLORS,
+                line=dict(color='#ffffff', width=2)
+            ),
+            textinfo='label+percent',
+            textfont=dict(size=12, color='#111111')
         )])
         
         fig.update_layout(
@@ -385,9 +418,9 @@ class Visualizer:
             y=data[value_col],
             mode='lines',
             name=value_col,
-            line=dict(color=self.PRIMARY_COLOR, width=2),
+            line=dict(color=self.PRIMARY_COLOR, width=2.5),
             fill='tozeroy',
-            fillcolor='rgba(102, 126, 234, 0.1)'
+            fillcolor='rgba(37, 99, 235, 0.08)'
         ))
         
         fig.update_layout(
@@ -434,7 +467,12 @@ class Visualizer:
             y=data[y_col],
             mode='markers',
             name='Data',
-            marker=dict(color=self.PRIMARY_COLOR, opacity=0.6)
+            marker=dict(
+                color=self.PRIMARY_COLOR,
+                opacity=0.65,
+                size=8,
+                line=dict(color='#ffffff', width=1)
+            )
         ))
         
         # Regression line
@@ -446,7 +484,7 @@ class Visualizer:
             y=y_range,
             mode='lines',
             name='Regression Line',
-            line=dict(color=self.ACCENT_COLOR, width=3)
+            line=dict(color=self.ACCENT_COLOR, width=2.5)
         ))
         
         fig.update_layout(
