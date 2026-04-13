@@ -266,14 +266,22 @@ class DataManager:
             return []
         date_cols = []
         for col in self.data.columns:
-            if self.data[col].dtype == 'object':
-                try:
-                    pd.to_datetime(self.data[col], errors='raise')
+            dtype = self.data[col].dtype
+            # Already a datetime column
+            try:
+                if np.issubdtype(dtype, np.datetime64):
                     date_cols.append(col)
+                    continue
+            except TypeError:
+                pass
+            # Try parsing string/object columns as dates
+            if hasattr(dtype, 'name') and dtype.name in ('object', 'string'):
+                try:
+                    parsed = pd.to_datetime(self.data[col], errors='coerce')
+                    if parsed.notna().sum() / max(len(self.data), 1) > 0.8:
+                        date_cols.append(col)
                 except (ValueError, TypeError):
                     continue
-            elif np.issubdtype(self.data[col].dtype, np.datetime64):
-                date_cols.append(col)
         return date_cols
 
     def get_cleaning_report(self) -> Optional[Dict[str, Any]]:
