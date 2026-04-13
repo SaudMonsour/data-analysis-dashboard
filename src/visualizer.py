@@ -32,11 +32,11 @@ class Visualizer:
         
     def _apply_theme(self, fig: go.Figure) -> go.Figure:
         """
-        Apply consistent light theme to all figures.
-        
+        Apply consistent professional light theme to all figures.
+
         Args:
             fig: Plotly figure object
-            
+
         Returns:
             go.Figure: Themed figure
         """
@@ -44,33 +44,52 @@ class Visualizer:
             template=self.template,
             paper_bgcolor=self.PAPER_COLOR,
             plot_bgcolor=self.BACKGROUND_COLOR,
-            font=dict(family='Inter, sans-serif', color=self.FONT_COLOR, size=12),
-            title_font=dict(family='Inter, sans-serif', color='#111111', size=15),
-            margin=dict(l=50, r=40, t=70, b=50),
+            font=dict(
+                family='Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+                color=self.FONT_COLOR,
+                size=12
+            ),
+            title_font=dict(
+                family='Inter, sans-serif',
+                color='#111827',
+                size=14,
+                weight='bold'
+            ),
+            margin=dict(l=55, r=30, t=65, b=55),
             hoverlabel=dict(
                 bgcolor='#ffffff',
-                bordercolor='#e2e6ea',
+                bordercolor='#e5e7eb',
                 font_size=12,
                 font_family='Inter, sans-serif',
-                font_color='#111111'
+                font_color='#111827',
+                namelength=-1
             ),
             xaxis=dict(
                 gridcolor=self.GRID_COLOR,
-                linecolor='#d1d5db',
-                tickfont=dict(color='#374151'),
-                title_font=dict(color='#374151')
+                linecolor='#e5e7eb',
+                tickfont=dict(color='#6b7280', size=11),
+                title_font=dict(color='#374151', size=12, weight='bold'),
+                showgrid=True,
+                zeroline=False
             ),
             yaxis=dict(
                 gridcolor=self.GRID_COLOR,
-                linecolor='#d1d5db',
-                tickfont=dict(color='#374151'),
-                title_font=dict(color='#374151')
+                linecolor='#e5e7eb',
+                tickfont=dict(color='#6b7280', size=11),
+                title_font=dict(color='#374151', size=12, weight='bold'),
+                showgrid=True,
+                zeroline=False
             ),
             legend=dict(
-                bgcolor='rgba(255,255,255,0.9)',
-                bordercolor='#e2e6ea',
+                bgcolor='rgba(255,255,255,0.95)',
+                bordercolor='#e5e7eb',
                 borderwidth=1,
-                font=dict(color='#374151')
+                font=dict(color='#374151', size=11),
+                orientation='h',
+                yanchor='bottom',
+                y=1.02,
+                xanchor='right',
+                x=1
             )
         )
         return fig
