@@ -1,22 +1,299 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from src.data_manager import DataManager
 from src.stats_manager import StatsManager
 from src.visualizer import Visualizer
 
 
+# ──────────────────────────────────────────────────────────────────
+# CSS
+# ──────────────────────────────────────────────────────────────────
+
+CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, .stApp {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    font-family: 'Inter', system-ui, sans-serif !important;
+    font-size: 14px !important;
+    -webkit-font-smoothing: antialiased !important;
+}
+
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {
+    background: #0f172a !important;
+    border-right: none !important;
+    min-width: 220px !important;
+}
+[data-testid="stSidebar"] * { color: #cbd5e1 !important; }
+[data-testid="stSidebar"] h3 { color: #f1f5f9 !important; }
+[data-testid="stSidebar"] .stMarkdown p,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] .stCaption {
+    color: #94a3b8 !important;
+    font-size: 12px !important;
+}
+[data-testid="stSidebar"] .stSelectbox label,
+[data-testid="stSidebar"] .stMultiSelect label,
+[data-testid="stSidebar"] .stRadio label {
+    color: #94a3b8 !important;
+    font-size: 11px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.07em !important;
+    font-weight: 600 !important;
+}
+
+/* Sidebar radio as nav */
+[data-testid="stSidebar"] .stRadio > div {
+    gap: 2px !important;
+}
+[data-testid="stSidebar"] .stRadio [data-testid="stMarkdownContainer"] p {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #94a3b8 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+}
+[data-testid="stSidebar"] .stRadio input:checked ~ div p {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+/* Sidebar selectbox */
+[data-testid="stSidebar"] .stSelectbox > div > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    border-radius: 5px !important;
+    color: #e2e8f0 !important;
+}
+[data-testid="stSidebar"] .stMultiSelect > div > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    border-radius: 5px !important;
+}
+
+/* File uploader in sidebar */
+[data-testid="stSidebar"] [data-testid="stFileUploader"] {
+    background: #1e293b !important;
+    border: 1.5px dashed #334155 !important;
+    border-radius: 8px !important;
+    padding: 0.5rem !important;
+}
+
+/* ── Main content ── */
+.main .block-container {
+    padding: 1.5rem 2rem 3rem !important;
+    max-width: 1500px !important;
+}
+
+/* ── Topbar ── */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.25rem;
+}
+.topbar-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
+.topbar-sub   { font-size: 0.75rem; color: #64748b; margin: 2px 0 0; }
+.topbar-right { display: flex; align-items: center; gap: 0.6rem; }
+.badge {
+    display: inline-block;
+    font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 0.22rem 0.6rem; border-radius: 4px;
+}
+.badge-dark  { background: #0f172a; color: #ffffff; }
+.badge-blue  { background: #dbeafe; color: #1d4ed8; }
+.badge-green { background: #dcfce7; color: #15803d; }
+.badge-red   { background: #fee2e2; color: #b91c1c; }
+.badge-amber { background: #fef3c7; color: #b45309; }
+
+/* ── Section label ── */
+.sec-label {
+    font-size: 0.68rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: #94a3b8; margin: 0 0 0.75rem; padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+/* ── Cards ── */
+.card {
+    background: #ffffff; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 1.25rem 1.4rem;
+    margin-bottom: 1rem;
+}
+.card-tight { padding: 0.9rem 1.2rem; }
+
+/* ── KPI card ── */
+.kpi-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.kpi-card {
+    flex: 1; min-width: 140px;
+    background: #ffffff; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 1.1rem 1.25rem;
+}
+.kpi-label {
+    font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.09em;
+    color: #94a3b8; margin: 0 0 0.35rem;
+}
+.kpi-value {
+    font-size: 1.7rem; font-weight: 800;
+    color: #0f172a; letter-spacing: -0.02em; margin: 0;
+    line-height: 1.15;
+}
+.kpi-sub { font-size: 0.72rem; color: #64748b; margin: 4px 0 0; }
+
+/* ── Finding cards ── */
+.finding {
+    border-left: 3px solid #2563eb;
+    background: #f8fafc; border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem; margin-bottom: 0.6rem;
+}
+.finding-warn  { border-left-color: #d97706; }
+.finding-ok    { border-left-color: #16a34a; }
+.finding-bad   { border-left-color: #dc2626; }
+.finding-title { font-size: 0.84rem; font-weight: 600; color: #0f172a; margin: 0 0 3px; }
+.finding-detail{ font-size: 0.78rem; color: #475569; margin: 0; line-height: 1.55; }
+
+/* ── Metric overrides ── */
+[data-testid="stMetric"] {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 0.9rem 1.1rem !important;
+}
+[data-testid="stMetricLabel"] {
+    font-size: 0.66rem !important; font-weight: 700 !important;
+    text-transform: uppercase !important; letter-spacing: 0.08em !important;
+    color: #94a3b8 !important;
+}
+[data-testid="stMetricValue"] {
+    font-size: 1.55rem !important; font-weight: 800 !important;
+    color: #0f172a !important; letter-spacing: -0.02em !important;
+}
+
+/* ── Buttons ── */
+.stButton > button {
+    background: #0f172a !important; color: #ffffff !important;
+    border: none !important; border-radius: 5px !important;
+    padding: 0.4rem 1rem !important;
+    font-size: 0.78rem !important; font-weight: 600 !important;
+    letter-spacing: 0.04em !important; text-transform: uppercase !important;
+    transition: background 0.15s !important;
+}
+.stButton > button:hover { background: #1e293b !important; }
+[data-testid="stDownloadButton"] > button {
+    background: #0f172a !important; color: #ffffff !important;
+    border: none !important; border-radius: 5px !important;
+    font-size: 0.78rem !important; font-weight: 600 !important;
+    letter-spacing: 0.04em !important; text-transform: uppercase !important;
+}
+[data-testid="stDownloadButton"] > button:hover { background: #1e293b !important; }
+
+/* ── Tabs ── */
+[data-testid="stTabs"] [role="tablist"] { border-bottom: 1px solid #e2e8f0 !important; }
+[data-testid="stTabs"] [role="tab"] {
+    font-size: 0.75rem !important; font-weight: 600 !important;
+    text-transform: uppercase !important; letter-spacing: 0.05em !important;
+    color: #94a3b8 !important; padding: 0.55rem 0.9rem !important;
+    border-radius: 0 !important; border-bottom: 2px solid transparent !important;
+}
+[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+    color: #0f172a !important; border-bottom: 2px solid #0f172a !important;
+    background: transparent !important;
+}
+
+/* ── Tables ── */
+[data-testid="stDataFrame"] {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important; overflow: hidden !important;
+}
+
+/* ── Form controls (main area) ── */
+.stSelectbox > label, .stMultiSelect > label,
+.stNumberInput > label, .stRadio > label, .stSlider > label {
+    font-size: 0.72rem !important; font-weight: 600 !important;
+    text-transform: uppercase !important; letter-spacing: 0.06em !important;
+    color: #64748b !important;
+}
+.stSelectbox > div > div, .stMultiSelect > div > div {
+    background: #ffffff !important; border: 1px solid #cbd5e1 !important;
+    border-radius: 5px !important; color: #0f172a !important; font-size: 13px !important;
+}
+
+/* ── Expander ── */
+[data-testid="stExpander"] {
+    background: #ffffff !important; border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+}
+[data-testid="stExpander"] summary {
+    font-size: 0.77rem !important; font-weight: 600 !important;
+    text-transform: uppercase !important; letter-spacing: 0.06em !important;
+    color: #475569 !important;
+}
+
+/* ── Alerts ── */
+.stAlert { border-radius: 7px !important; font-size: 0.82rem !important; }
+
+/* ── HR ── */
+hr { border: none !important; border-top: 1px solid #e2e8f0 !important; margin: 1.5rem 0 !important; }
+
+/* ── Empty state ── */
+.empty-state {
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 4.5rem 2.5rem; text-align: center; margin-top: 1rem;
+}
+.empty-title { font-size: 1.15rem; font-weight: 700; color: #0f172a; margin: 0 0 0.5rem; }
+.empty-sub {
+    font-size: 0.85rem; color: #64748b; margin: 0 auto 2.5rem;
+    max-width: 400px; line-height: 1.65;
+}
+.feat-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 1rem; text-align: left; margin-bottom: 2rem;
+}
+.feat-card {
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 8px; padding: 1rem 1.1rem;
+}
+.feat-name { font-size: 0.8rem; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
+.feat-desc { font-size: 0.73rem; color: #64748b; margin: 0; line-height: 1.55; }
+.fmt-note  { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.07em; }
+</style>
+"""
+
+
+# ──────────────────────────────────────────────────────────────────
+# APP
+# ──────────────────────────────────────────────────────────────────
+
 class DashboardApp:
-    """
-    Main application class managing the Streamlit dashboard.
-    """
+
+    PAGES = [
+        "Overview",
+        "Exploration",
+        "Statistical Analysis",
+        "Forecasting",
+        "Anomaly Detection",
+        "Raw Data",
+    ]
 
     def __init__(self):
-        """Initialize the dashboard components."""
         st.set_page_config(
-            page_title="Data Analysis Dashboard",
+            page_title="DataInsight Pro",
             layout="wide",
-            initial_sidebar_state="expanded"
+            initial_sidebar_state="expanded",
         )
+        st.markdown(CSS, unsafe_allow_html=True)
 
         if 'data_manager' not in st.session_state:
             st.session_state.data_manager = DataManager()
@@ -24,999 +301,752 @@ class DashboardApp:
             st.session_state.visualizer = Visualizer()
         if 'stats_manager' not in st.session_state:
             st.session_state.stats_manager = None
+        if 'page' not in st.session_state:
+            st.session_state.page = "Overview"
 
-        self.data_manager = st.session_state.data_manager
-        self.visualizer = st.session_state.visualizer
-        self.stats_manager = st.session_state.stats_manager
+        self.dm  = st.session_state.data_manager
+        self.viz = st.session_state.visualizer
+        self.sm  = st.session_state.stats_manager
 
-        self._apply_custom_css()
+    # ── helpers ──────────────────────────────────────────────────
 
-    def _apply_custom_css(self):
-        """Apply professional enterprise CSS styling."""
-        st.markdown("""
-            <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    def _kpi(self, label: str, value: str, sub: str = ''):
+        return (
+            f'<div class="kpi-card">'
+            f'<p class="kpi-label">{label}</p>'
+            f'<p class="kpi-value">{value}</p>'
+            + (f'<p class="kpi-sub">{sub}</p>' if sub else '')
+            + '</div>'
+        )
 
-            /* ───────────────────────────────────────────
-               GLOBAL RESET & BASE
-            ─────────────────────────────────────────── */
-            *, *::before, *::after { box-sizing: border-box; }
+    def _badge(self, text: str, kind: str = 'dark') -> str:
+        return f'<span class="badge badge-{kind}">{text}</span>'
 
-            html, body, .stApp {
-                background-color: #f0f2f5 !important;
-                color: #111827 !important;
-                font-family: 'Inter', -apple-system, BlinkMacSystemFont,
-                             'Segoe UI', sans-serif !important;
-                font-size: 14px !important;
-                line-height: 1.6 !important;
-                -webkit-font-smoothing: antialiased !important;
-            }
+    def _finding(self, title: str, detail: str, kind: str = 'info'):
+        cls_map = {'info': '', 'warning': 'finding-warn',
+                   'success': 'finding-ok', 'error': 'finding-bad'}
+        cls = cls_map.get(kind, '')
+        return (f'<div class="finding {cls}">'
+                f'<p class="finding-title">{title}</p>'
+                f'<p class="finding-detail">{detail}</p>'
+                f'</div>')
 
-            /* ───────────────────────────────────────────
-               SIDEBAR
-            ─────────────────────────────────────────── */
-            [data-testid="stSidebar"] {
-                background-color: #ffffff !important;
-                border-right: 1px solid #e5e7eb !important;
-                padding-top: 0 !important;
-            }
-            [data-testid="stSidebar"] > div:first-child {
-                padding-top: 0 !important;
-            }
-            [data-testid="stSidebar"] .stMarkdown p,
-            [data-testid="stSidebar"] label,
-            [data-testid="stSidebar"] .stCaption,
-            [data-testid="stSidebar"] p {
-                color: #374151 !important;
-                font-size: 13px !important;
-            }
-            [data-testid="stSidebar"] h2,
-            [data-testid="stSidebar"] h3 {
-                color: #111827 !important;
-                font-size: 13px !important;
-                font-weight: 600 !important;
-                letter-spacing: 0.07em !important;
-                text-transform: uppercase !important;
-                margin-bottom: 0.5rem !important;
-            }
+    def _sec(self, text: str):
+        st.markdown(f'<p class="sec-label">{text}</p>', unsafe_allow_html=True)
 
-            /* Sidebar brand strip */
-            .sidebar-brand {
-                background: #111827;
-                padding: 1.1rem 1.25rem;
-                margin: 0 -1rem 1.25rem -1rem;
-            }
-            .sidebar-brand-name {
-                font-size: 0.92rem;
-                font-weight: 700;
-                color: #ffffff;
-                letter-spacing: 0.04em;
-                text-transform: uppercase;
-                margin: 0;
-            }
-            .sidebar-brand-tag {
-                font-size: 0.72rem;
-                color: #9ca3af;
-                margin: 2px 0 0 0;
-                letter-spacing: 0.04em;
-            }
-
-            /* ───────────────────────────────────────────
-               MAIN CONTENT AREA
-            ─────────────────────────────────────────── */
-            .main .block-container {
-                padding: 1.75rem 2rem 3rem 2rem !important;
-                max-width: 1440px !important;
-            }
-
-            /* ───────────────────────────────────────────
-               TOPBAR / PAGE HEADER
-            ─────────────────────────────────────────── */
-            .page-header {
-                background: #ffffff;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                padding: 1.25rem 1.75rem;
-                margin-bottom: 1.5rem;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
-            .page-header-title {
-                font-size: 1.25rem;
-                font-weight: 700;
-                color: #111827;
-                margin: 0;
-                letter-spacing: -0.01em;
-            }
-            .page-header-sub {
-                font-size: 0.8rem;
-                color: #6b7280;
-                margin: 3px 0 0 0;
-            }
-            .page-header-badge {
-                background: #111827;
-                color: #ffffff;
-                font-size: 0.7rem;
-                font-weight: 600;
-                padding: 0.25rem 0.65rem;
-                border-radius: 4px;
-                letter-spacing: 0.06em;
-                text-transform: uppercase;
-            }
-
-            /* ───────────────────────────────────────────
-               SECTION HEADINGS
-            ─────────────────────────────────────────── */
-            .section-label {
-                font-size: 0.7rem;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.1em;
-                color: #6b7280;
-                margin: 0 0 0.75rem 0;
-                padding-bottom: 0.5rem;
-                border-bottom: 1px solid #e5e7eb;
-            }
-            h1, h2, h3, h4 {
-                color: #111827 !important;
-                font-weight: 700 !important;
-                letter-spacing: -0.01em !important;
-            }
-            h2 { font-size: 1.15rem !important; }
-            h3 { font-size: 0.95rem !important; }
-
-            /* ───────────────────────────────────────────
-               METRIC CARDS
-            ─────────────────────────────────────────── */
-            [data-testid="stMetric"] {
-                background-color: #ffffff !important;
-                border: 1px solid #e5e7eb !important;
-                border-radius: 8px !important;
-                padding: 1.1rem 1.25rem !important;
-            }
-            [data-testid="stMetricLabel"] {
-                color: #6b7280 !important;
-                font-size: 0.7rem !important;
-                font-weight: 600 !important;
-                text-transform: uppercase !important;
-                letter-spacing: 0.08em !important;
-            }
-            [data-testid="stMetricValue"] {
-                color: #111827 !important;
-                font-size: 1.75rem !important;
-                font-weight: 800 !important;
-                letter-spacing: -0.02em !important;
-            }
-            [data-testid="stMetricDelta"] {
-                font-size: 0.75rem !important;
-                font-weight: 500 !important;
-            }
-
-            /* ───────────────────────────────────────────
-               BUTTONS
-            ─────────────────────────────────────────── */
-            .stButton > button {
-                background-color: #111827 !important;
-                color: #ffffff !important;
-                border: none !important;
-                border-radius: 5px !important;
-                padding: 0.42rem 1.1rem !important;
-                font-size: 0.8rem !important;
-                font-weight: 600 !important;
-                letter-spacing: 0.04em !important;
-                text-transform: uppercase !important;
-                transition: background 0.15s ease !important;
-                cursor: pointer !important;
-            }
-            .stButton > button:hover {
-                background-color: #1f2937 !important;
-            }
-            .stButton > button:active {
-                background-color: #374151 !important;
-            }
-            [data-testid="stDownloadButton"] > button {
-                background-color: #111827 !important;
-                color: #ffffff !important;
-                border: none !important;
-                border-radius: 5px !important;
-                font-size: 0.8rem !important;
-                font-weight: 600 !important;
-                letter-spacing: 0.04em !important;
-                text-transform: uppercase !important;
-            }
-            [data-testid="stDownloadButton"] > button:hover {
-                background-color: #1f2937 !important;
-            }
-
-            /* ───────────────────────────────────────────
-               TABS
-            ─────────────────────────────────────────── */
-            [data-testid="stTabs"] [role="tablist"] {
-                border-bottom: 1px solid #e5e7eb !important;
-                gap: 0 !important;
-            }
-            [data-testid="stTabs"] [role="tab"] {
-                font-size: 0.78rem !important;
-                font-weight: 600 !important;
-                letter-spacing: 0.04em !important;
-                text-transform: uppercase !important;
-                color: #9ca3af !important;
-                padding: 0.6rem 1rem !important;
-                border-radius: 0 !important;
-                border-bottom: 2px solid transparent !important;
-                transition: color 0.15s ease !important;
-            }
-            [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-                color: #111827 !important;
-                border-bottom: 2px solid #111827 !important;
-                background: transparent !important;
-            }
-            [data-testid="stTabs"] [role="tab"]:hover {
-                color: #374151 !important;
-            }
-
-            /* ───────────────────────────────────────────
-               DATA TABLE
-            ─────────────────────────────────────────── */
-            [data-testid="stDataFrame"] {
-                border: 1px solid #e5e7eb !important;
-                border-radius: 6px !important;
-                overflow: hidden !important;
-            }
-            [data-testid="stDataFrame"] thead tr th {
-                background-color: #f9fafb !important;
-                color: #374151 !important;
-                font-size: 0.72rem !important;
-                font-weight: 600 !important;
-                text-transform: uppercase !important;
-                letter-spacing: 0.06em !important;
-            }
-
-            /* ───────────────────────────────────────────
-               FORM CONTROLS
-            ─────────────────────────────────────────── */
-            .stSelectbox > label,
-            .stMultiSelect > label,
-            .stNumberInput > label,
-            .stRadio > label,
-            .stSlider > label {
-                font-size: 0.75rem !important;
-                font-weight: 600 !important;
-                text-transform: uppercase !important;
-                letter-spacing: 0.06em !important;
-                color: #6b7280 !important;
-            }
-            .stSelectbox > div > div,
-            .stMultiSelect > div > div {
-                background-color: #ffffff !important;
-                border: 1px solid #d1d5db !important;
-                border-radius: 5px !important;
-                color: #111827 !important;
-                font-size: 13px !important;
-            }
-            .stFileUploader {
-                border: 1.5px dashed #d1d5db !important;
-                border-radius: 8px !important;
-                background: #f9fafb !important;
-                padding: 0.5rem !important;
-            }
-
-            /* ───────────────────────────────────────────
-               EXPANDER
-            ─────────────────────────────────────────── */
-            [data-testid="stExpander"] {
-                background-color: #ffffff !important;
-                border: 1px solid #e5e7eb !important;
-                border-radius: 6px !important;
-            }
-            [data-testid="stExpander"] summary {
-                font-size: 0.8rem !important;
-                font-weight: 600 !important;
-                text-transform: uppercase !important;
-                letter-spacing: 0.06em !important;
-                color: #374151 !important;
-            }
-
-            /* ───────────────────────────────────────────
-               ALERTS / NOTIFICATIONS
-            ─────────────────────────────────────────── */
-            .stAlert {
-                border-radius: 6px !important;
-                font-size: 0.82rem !important;
-            }
-
-            /* ───────────────────────────────────────────
-               DIVIDER
-            ─────────────────────────────────────────── */
-            hr {
-                border: none !important;
-                border-top: 1px solid #e5e7eb !important;
-                margin: 1.75rem 0 !important;
-            }
-
-            /* ───────────────────────────────────────────
-               SIDEBAR DIVIDER
-            ─────────────────────────────────────────── */
-            [data-testid="stSidebar"] hr {
-                border-top: 1px solid #f3f4f6 !important;
-                margin: 0.75rem 0 !important;
-            }
-
-            /* ───────────────────────────────────────────
-               WELCOME / EMPTY STATE
-            ─────────────────────────────────────────── */
-            .empty-state {
-                background: #ffffff;
-                border: 1px solid #e5e7eb;
-                border-radius: 10px;
-                padding: 4rem 2.5rem;
-                text-align: center;
-            }
-            .empty-state-icon {
-                width: 52px;
-                height: 52px;
-                background: #f3f4f6;
-                border-radius: 12px;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                margin-bottom: 1.25rem;
-            }
-            .empty-state-title {
-                font-size: 1.15rem;
-                font-weight: 700;
-                color: #111827;
-                margin: 0 0 0.5rem 0;
-            }
-            .empty-state-sub {
-                font-size: 0.85rem;
-                color: #6b7280;
-                margin: 0 auto;
-                max-width: 380px;
-            }
-            .feature-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                gap: 1rem;
-                margin-top: 2.5rem;
-                text-align: left;
-            }
-            .feature-card {
-                background: #f9fafb;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                padding: 1.1rem 1.25rem;
-            }
-            .feature-card-label {
-                font-size: 0.8rem;
-                font-weight: 700;
-                color: #111827;
-                margin: 0 0 0.3rem 0;
-                letter-spacing: -0.01em;
-            }
-            .feature-card-desc {
-                font-size: 0.75rem;
-                color: #6b7280;
-                margin: 0;
-                line-height: 1.5;
-            }
-            .format-note {
-                font-size: 0.72rem;
-                color: #9ca3af;
-                margin-top: 2rem;
-                letter-spacing: 0.04em;
-                text-transform: uppercase;
-            }
-
-            /* ───────────────────────────────────────────
-               CARD WRAPPER (generic white panel)
-            ─────────────────────────────────────────── */
-            .panel {
-                background: #ffffff;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                padding: 1.25rem 1.5rem;
-                margin-bottom: 1rem;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-
-    # ──────────────────────────────────────────────────────────────
-    # SIDEBAR
-    # ──────────────────────────────────────────────────────────────
+    # ── Sidebar ──────────────────────────────────────────────────
 
     def render_sidebar(self):
-        """Render the sidebar for data upload and settings."""
         with st.sidebar:
             st.markdown("""
-                <div class="sidebar-brand">
-                    <p class="sidebar-brand-name">DataInsight Pro</p>
-                    <p class="sidebar-brand-tag">Analytics Dashboard</p>
+                <div style="padding:1.25rem 1rem 1rem;border-bottom:1px solid #1e293b;margin-bottom:1rem;">
+                    <p style="font-size:1rem;font-weight:800;color:#f1f5f9;margin:0;letter-spacing:-0.01em;">
+                        DataInsight Pro
+                    </p>
+                    <p style="font-size:0.7rem;color:#475569;margin:3px 0 0;text-transform:uppercase;letter-spacing:0.08em;">
+                        Decision Analytics Platform
+                    </p>
                 </div>
             """, unsafe_allow_html=True)
 
-            st.markdown('<p class="section-label">Data Source</p>', unsafe_allow_html=True)
+            # Navigation
+            st.markdown('<p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#475569;margin:0 0 0.5rem;">Navigation</p>', unsafe_allow_html=True)
+            page = st.radio("nav", self.PAGES, label_visibility="collapsed",
+                            key="page_radio")
+            st.session_state.page = page
+
+            st.markdown('<div style="border-top:1px solid #1e293b;margin:1rem 0;"></div>', unsafe_allow_html=True)
+
+            # Data upload
+            st.markdown('<p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#475569;margin:0 0 0.5rem;">Data Source</p>', unsafe_allow_html=True)
             uploaded_file = st.file_uploader(
-                "Upload a CSV or Excel file",
+                "Upload CSV or Excel",
                 type=['csv', 'xlsx', 'xls'],
-                label_visibility="collapsed"
+                label_visibility="collapsed",
             )
-
             if uploaded_file is not None:
-                if self.data_manager.load_data(uploaded_file):
-                    self.data_manager.clean_data()
-                    self.stats_manager = StatsManager(self.data_manager.data)
-                    st.session_state.stats_manager = self.stats_manager
-                    st.success("Dataset loaded successfully.")
+                if self.dm.load_data(uploaded_file):
+                    self.dm.clean_data()
+                    self.sm = StatsManager(self.dm.data)
+                    st.session_state.stats_manager = self.sm
+                    st.success("Dataset loaded.")
 
-            st.markdown("---")
-
-    def render_viz_settings(self):
-        """Render visualization settings in sidebar."""
-        selected_columns = None
-        chart_type = None
-
-        if self.data_manager.data is not None:
-            with st.sidebar:
-                st.markdown('<p class="section-label">Visualization</p>', unsafe_allow_html=True)
-
-                numeric_cols = self.data_manager.get_data_info()['numeric_columns']
-                all_cols = self.data_manager.get_data_info()['column_names']
-
-                chart_type = st.selectbox(
-                    "Chart Type",
-                    ["Histogram", "Scatter Plot", "Line Chart", "Box Plot", "Bar Chart"]
+            if self.dm.data is not None:
+                info = self.dm.get_data_info()
+                st.markdown(
+                    f'<p style="font-size:11px;color:#475569;margin-top:0.5rem;">'
+                    f'{info["rows"]:,} rows &nbsp;·&nbsp; {info["columns"]} columns</p>',
+                    unsafe_allow_html=True,
                 )
+
+            # Viz settings (shown only when data is loaded)
+            if self.dm.data is not None and page == "Exploration":
+                st.markdown('<div style="border-top:1px solid #1e293b;margin:1rem 0;"></div>', unsafe_allow_html=True)
+                st.markdown('<p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#475569;margin:0 0 0.5rem;">Chart Settings</p>', unsafe_allow_html=True)
+                numeric_cols = self.dm.get_data_info()['numeric_columns']
+                all_cols     = self.dm.get_data_info()['column_names']
+                cat_cols     = self.dm.get_data_info()['categorical_columns']
+
+                chart_type = st.selectbox("Chart Type",
+                    ["Histogram", "Scatter Plot", "Box Plot",
+                     "Bar Chart", "Line Chart", "Correlation Heatmap"])
+                st.session_state['chart_type'] = chart_type
 
                 if chart_type == "Histogram":
-                    selected_columns = st.selectbox("Column", numeric_cols)
-
-                elif chart_type == "Scatter Plot":
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        x_col = st.selectbox("X Axis", numeric_cols, key='scatter_x')
-                    with col2:
-                        y_col = st.selectbox("Y Axis", numeric_cols, key='scatter_y')
-                    selected_columns = (x_col, y_col)
-
-                elif chart_type == "Line Chart":
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        x_col = st.selectbox("X Axis", all_cols, key='line_x')
-                    with col2:
-                        y_col = st.selectbox("Y Axis", numeric_cols, key='line_y')
-                    selected_columns = (x_col, y_col)
-
+                    st.session_state['chart_cols'] = st.selectbox("Column", numeric_cols)
+                elif chart_type in ("Scatter Plot", "Line Chart"):
+                    c1, c2 = st.columns(2)
+                    xc = c1.selectbox("X", all_cols if chart_type == "Line Chart" else numeric_cols, key='cx')
+                    yc = c2.selectbox("Y", numeric_cols, key='cy')
+                    st.session_state['chart_cols'] = (xc, yc)
                 elif chart_type == "Box Plot":
-                    selected_columns = st.multiselect(
-                        "Columns (max 5)",
-                        numeric_cols,
-                        default=numeric_cols[:min(3, len(numeric_cols))],
-                        max_selections=5
+                    st.session_state['chart_cols'] = st.multiselect(
+                        "Columns", numeric_cols,
+                        default=numeric_cols[:min(4, len(numeric_cols))], max_selections=6)
+                elif chart_type == "Bar Chart":
+                    cats = cat_cols if cat_cols else all_cols
+                    c1, c2 = st.columns(2)
+                    xc = c1.selectbox("Category", cats, key='bx')
+                    yc = c2.selectbox("Value",    numeric_cols, key='by')
+                    st.session_state['chart_cols'] = (xc, yc)
+                elif chart_type == "Correlation Heatmap":
+                    st.session_state['chart_cols'] = None
+
+    # ── Topbar ───────────────────────────────────────────────────
+
+    def _topbar(self, page: str):
+        health_badge = ''
+        if self.sm is not None:
+            h = self.sm.calculate_health_score()
+            if h:
+                kind = ('green' if h['rating'] in ('Excellent', 'Good')
+                        else 'amber' if h['rating'] == 'Fair' else 'red')
+                health_badge = self._badge(f"Health: {h['score']:.0f}/100 — {h['rating']}", kind)
+        row_badge = ''
+        if self.dm.data is not None:
+            info = self.dm.get_data_info()
+            row_badge = self._badge(f"{info['rows']:,} rows · {info['columns']} cols", 'blue')
+
+        st.markdown(
+            f'<div class="topbar">'
+            f'<div><p class="topbar-title">DataInsight Pro</p>'
+            f'<p class="topbar-sub">Decision Analytics Platform &nbsp;·&nbsp; {page}</p></div>'
+            f'<div class="topbar-right">{row_badge} {health_badge}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ──────────────────────────────────────────────────────────────
+    # PAGE: OVERVIEW
+    # ──────────────────────────────────────────────────────────────
+
+    def page_overview(self):
+        self._sec("Executive Summary")
+        if self.sm is None:
+            st.info("Upload a dataset to view the executive summary and key findings.")
+            return
+
+        findings = self.sm.generate_executive_summary()
+        html = ''.join(self._finding(f['title'], f['detail'], f['type']) for f in findings)
+        st.markdown(html, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # KPIs
+        self._sec("Key Performance Indicators")
+        info   = self.dm.get_data_info()
+        health = self.sm.calculate_health_score()
+        h_val  = f"{health['score']:.0f}" if health else 'N/A'
+        h_sub  = health['rating'] if health else ''
+
+        kpis_html = (
+            '<div class="kpi-row">'
+            + self._kpi("Total Records",      f"{info['rows']:,}")
+            + self._kpi("Columns",            f"{info['columns']}")
+            + self._kpi("Numeric Fields",     f"{len(info['numeric_columns'])}")
+            + self._kpi("Categorical Fields", f"{len(info['categorical_columns'])}")
+            + self._kpi("Data Quality Score", f"{h_val}/100", h_sub)
+            + self._kpi("Missing Values",     f"{self.dm.data.isnull().sum().sum():,}",
+                         f"{self.dm.data.isnull().sum().sum() / (info['rows'] * info['columns']) * 100:.1f}% of cells")
+            + '</div>'
+        )
+        st.markdown(kpis_html, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # Health gauge + top correlations
+        col_g, col_c = st.columns([1, 2])
+        with col_g:
+            self._sec("Data Quality Gauge")
+            if health:
+                fig = self.viz.create_health_gauge(health['score'], health['rating'])
+                st.plotly_chart(fig, use_container_width=True)
+                # Component breakdown
+                comp = health['components']
+                for name, val in [("Completeness", comp['missing_score']),
+                                   ("No Duplicates", comp['duplicate_score']),
+                                   ("No Outliers",   comp['outlier_score']),
+                                   ("Consistency",   comp['consistency_score'])]:
+                    color = '#16a34a' if val >= 80 else '#d97706' if val >= 50 else '#dc2626'
+                    pct   = f"{val:.0f}%"
+                    st.markdown(
+                        f'<div style="display:flex;align-items:center;justify-content:space-between;'
+                        f'padding:5px 0;border-bottom:1px solid #f1f5f9;">'
+                        f'<span style="font-size:12px;color:#475569;">{name}</span>'
+                        f'<span style="font-size:12px;font-weight:700;color:{color};">{pct}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
                     )
 
-                elif chart_type == "Bar Chart":
-                    col1, col2 = st.columns(2)
-                    categorical_cols = self.data_manager.get_data_info()['categorical_columns']
-                    if not categorical_cols:
-                        categorical_cols = all_cols
-                    with col1:
-                        x_col = st.selectbox("Category", categorical_cols, key='bar_x')
-                    with col2:
-                        y_col = st.selectbox("Value", numeric_cols, key='bar_y')
-                    selected_columns = (x_col, y_col)
-
-                st.markdown("---")
-
-        with st.sidebar:
-            st.markdown('<p class="section-label" style="margin-top:0.5rem;">About</p>', unsafe_allow_html=True)
-            st.markdown(
-                '<p style="font-size:12px;color:#6b7280;line-height:1.6;">'
-                'Upload a dataset to explore key metrics, statistical tests, '
-                'correlation analysis and interactive charts.'
-                '</p>',
-                unsafe_allow_html=True
-            )
-
-        return selected_columns, chart_type
-
-    # ──────────────────────────────────────────────────────────────
-    # DATA OVERVIEW
-    # ──────────────────────────────────────────────────────────────
-
-    def render_data_overview(self):
-        """Render dataset overview section."""
-        if self.data_manager.data is None or self.stats_manager is None:
-            return
-
-        st.markdown('<p class="section-label">Dataset Overview</p>', unsafe_allow_html=True)
-
-        # Health score + KPI row
-        health = self.stats_manager.calculate_health_score()
-        data_info = self.data_manager.get_data_info()
-
-        cols = st.columns(5)
-        with cols[0]:
-            if health:
-                st.metric("Health Score", f"{health['score']:.0f} / 100", delta=health['rating'])
-        with cols[1]:
-            st.metric("Rows", f"{data_info['rows']:,}")
-        with cols[2]:
-            st.metric("Columns", f"{data_info['columns']}")
-        with cols[3]:
-            st.metric("Numeric", f"{len(data_info['numeric_columns'])}")
-        with cols[4]:
-            st.metric("Categorical", f"{len(data_info['categorical_columns'])}")
+        with col_c:
+            self._sec("Top Variable Relationships")
+            top_corr = self.sm.get_top_correlations(n=8)
+            if not top_corr.empty:
+                st.dataframe(top_corr, use_container_width=True, hide_index=True,
+                             height=260)
+                st.info(self.sm.generate_correlation_insight())
+            else:
+                st.info("No numeric columns available for correlation analysis.")
 
         st.markdown("---")
 
-        # Cleaning summary
-        cleaning_report = self.data_manager.get_cleaning_report()
-        if cleaning_report and (cleaning_report['duplicates_removed'] > 0 or
-                                cleaning_report['values_filled'] or
-                                cleaning_report['type_conversions']):
-            with st.expander("Data Cleaning Report"):
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    st.metric("Duplicate Rows Removed", cleaning_report['duplicates_removed'])
-                with col_b:
-                    st.metric("Columns with Imputed Values", len(cleaning_report['values_filled']))
-                if cleaning_report['values_filled']:
-                    st.write("**Imputed Values**")
-                    for col, count in cleaning_report['values_filled'].items():
-                        st.write(f"- {col}: {count} value(s)")
-                if cleaning_report['type_conversions']:
-                    st.write("**Type Conversions**")
-                    for conversion in cleaning_report['type_conversions']:
-                        st.write(f"- {conversion}")
+        # Variance analysis table
+        self._sec("Volatility & Variability Analysis")
+        var_df = self.sm.get_variance_analysis()
+        if not var_df.empty:
+            c1, c2 = st.columns([2, 1])
+            with c1:
+                st.dataframe(var_df, use_container_width=True, hide_index=True, height=280)
+            with c2:
+                fig = self.viz.create_cv_chart(var_df)
+                st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No numeric columns available.")
 
-        # Data types pie + column summary
+    # ──────────────────────────────────────────────────────────────
+    # PAGE: EXPLORATION
+    # ──────────────────────────────────────────────────────────────
+
+    def page_exploration(self):
+        if self.sm is None:
+            st.info("Upload a dataset to begin exploration.")
+            return
+
+        chart_type = st.session_state.get('chart_type', 'Histogram')
+        chart_cols = st.session_state.get('chart_cols', None)
+
+        self._sec(f"Interactive Chart — {chart_type}")
+        try:
+            if chart_type == "Correlation Heatmap":
+                corr = self.sm.get_correlations()
+                if corr is not None:
+                    fig = self.viz.create_heatmap(corr)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("No numeric columns for correlation heatmap.")
+
+            elif chart_type == "Histogram" and chart_cols:
+                fig = self.viz.create_histogram(self.dm.data, chart_cols)
+                st.plotly_chart(fig, use_container_width=True)
+                st.info(self.sm.generate_distribution_insight(chart_cols))
+
+            elif chart_type == "Scatter Plot" and chart_cols:
+                fig = self.viz.create_scatter(self.dm.data, chart_cols[0], chart_cols[1])
+                st.plotly_chart(fig, use_container_width=True)
+
+            elif chart_type == "Box Plot" and chart_cols:
+                fig = self.viz.create_box_plot(self.dm.data, chart_cols)
+                st.plotly_chart(fig, use_container_width=True)
+
+            elif chart_type == "Bar Chart" and chart_cols:
+                fig = self.viz.create_bar_chart(self.dm.data, chart_cols[0], chart_cols[1])
+                st.plotly_chart(fig, use_container_width=True)
+
+            elif chart_type == "Line Chart" and chart_cols:
+                fig = self.viz.create_line_chart(self.dm.data, chart_cols[0], chart_cols[1])
+                st.plotly_chart(fig, use_container_width=True)
+
+            else:
+                st.info("Configure chart settings in the sidebar.")
+        except Exception as e:
+            st.error(f"Chart error: {e}")
+
+        st.markdown("---")
+
+        # Column summary table
+        self._sec("Column Summary")
         c1, c2 = st.columns([1, 2])
-
         with c1:
-            st.markdown('<p class="section-label">Column Types</p>', unsafe_allow_html=True)
-            type_counts = self.data_manager.data.dtypes.astype(str).value_counts()
-            fig = self.visualizer.create_pie_chart(
-                labels=type_counts.index.tolist(),
-                values=type_counts.values.tolist(),
-                title=""
-            )
-            fig.update_layout(height=320, margin=dict(t=10, b=10, l=0, r=0))
+            type_counts = self.dm.data.dtypes.astype(str).value_counts()
+            fig = self.viz.create_pie_chart(type_counts.index.tolist(),
+                                             type_counts.values.tolist(), "Column Types")
+            fig.update_layout(height=280, margin=dict(t=10, b=30, l=0, r=0))
             st.plotly_chart(fig, use_container_width=True)
-
         with c2:
-            st.markdown('<p class="section-label">Column Summary</p>', unsafe_allow_html=True)
-            master_df = self.stats_manager.get_comprehensive_summary()
-            if not master_df.empty:
-                master_df['Missing (%)'] = master_df['Missing (%)'].map('{:.1f}%'.format)
-                st.dataframe(
-                    master_df,
-                    use_container_width=True,
-                    height=320,
-                    hide_index=True,
-                    column_config={
-                        "Missing (%)": st.column_config.ProgressColumn(
-                            "Missing (%)",
-                            format="%s",
-                            min_value=0,
-                            max_value=100,
-                        ),
-                    }
-                )
+            master = self.sm.get_comprehensive_summary()
+            if not master.empty:
+                master['Missing (%)'] = master['Missing (%)'].map('{:.1f}%'.format)
+                st.dataframe(master, use_container_width=True, hide_index=True, height=280,
+                             column_config={
+                                 "Missing (%)": st.column_config.ProgressColumn(
+                                     "Missing (%)", format="%s", min_value=0, max_value=100)
+                             })
 
     # ──────────────────────────────────────────────────────────────
-    # TIME SERIES
+    # PAGE: STATISTICAL ANALYSIS
     # ──────────────────────────────────────────────────────────────
 
-    def render_time_series_analysis(self):
-        """Render time series analysis section if date columns exist."""
-        date_cols = self.data_manager.identify_date_columns()
-        if not date_cols or self.stats_manager is None:
+    def page_stats(self):
+        if self.sm is None:
+            st.info("Upload a dataset to run statistical analyses.")
             return
 
-        st.markdown('<p class="section-label">Time Series Analysis</p>', unsafe_allow_html=True)
-        st.info("Automated trend analysis based on detected date columns.")
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            date_col = st.selectbox("Date Column", date_cols)
-        numeric_cols = self.data_manager.get_data_info()['numeric_columns']
-        if not numeric_cols:
-            st.warning("No numeric columns available for time series analysis.")
-            return
-        with col2:
-            val_col = st.selectbox("Metric", numeric_cols)
-        with col3:
-            freq = st.selectbox(
-                "Frequency",
-                ["D", "W", "M", "Q", "Y"],
-                format_func=lambda x: {"D": "Daily", "W": "Weekly", "M": "Monthly",
-                                       "Q": "Quarterly", "Y": "Yearly"}[x]
-            )
-
-        ts_data = self.stats_manager.get_time_series_data(date_col, val_col, freq)
-        if not ts_data.empty:
-            fig = self.visualizer.create_time_series_chart(ts_data, date_col, val_col)
-            st.plotly_chart(fig, use_container_width=True)
-
-        st.markdown("---")
-
-    # ──────────────────────────────────────────────────────────────
-    # DECISION SUPPORT
-    # ──────────────────────────────────────────────────────────────
-
-    def render_decision_support(self):
-        """Render decision support tools section."""
-        if self.stats_manager is None:
-            return
-
-        st.markdown('<p class="section-label">Decision Support Tools</p>', unsafe_allow_html=True)
-
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "Outlier Detection",
-            "Data Filtering",
-            "Grouped Analysis",
-            "Top Relationships",
+            "Group Comparison",
             "Regression",
-            "Hypothesis Testing"
+            "Hypothesis Testing",
+            "Pareto Analysis",
         ])
 
         # ── Outlier Detection ──
         with tab1:
-            st.markdown("#### Outlier Detection — IQR Method")
-            st.info(
-                "Outliers are data points that deviate significantly from the rest of the "
-                "distribution. They may indicate measurement errors or genuine anomalies."
+            self._sec("IQR-Based Outlier Detection")
+            st.markdown(
+                "Outliers are identified where values fall outside **Q1 − 1.5×IQR** "
+                "or **Q3 + 1.5×IQR**. Review flagged records before drawing conclusions."
             )
-            outliers = self.stats_manager.get_outliers()
+            outliers = self.sm.get_outliers()
             if outliers:
-                col_select = st.selectbox("Select Column", list(outliers.keys()))
+                col_select = st.selectbox("Inspect Column", list(outliers.keys()))
                 if col_select:
-                    st.warning(f"{len(outliers[col_select])} potential outlier(s) found in '{col_select}'.")
-                    st.dataframe(outliers[col_select], use_container_width=True)
+                    df_out = outliers[col_select]
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Outlier Rows",  len(df_out))
+                    m2.metric("Min Outlier Value", f"{df_out[col_select].min():.4f}")
+                    m3.metric("Max Outlier Value", f"{df_out[col_select].max():.4f}")
+                    st.dataframe(df_out, use_container_width=True, height=300)
             else:
-                st.success("No statistical outliers detected in numeric columns.")
-            insight = self.stats_manager.generate_outlier_insight()
-            st.info(insight)
+                st.success("No IQR outliers detected across all numeric columns.")
+            st.info(self.sm.generate_outlier_insight())
 
-        # ── Data Filtering ──
+        # ── Group Comparison ──
         with tab2:
-            st.markdown("#### Interactive Data Filtering")
-            if self.data_manager.data is not None:
-                numeric_cols = self.data_manager.get_data_info()['numeric_columns']
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    filter_col = st.selectbox("Column", numeric_cols, key='filter_col')
-                with col2:
-                    condition = st.selectbox("Condition", [">", "<", ">=", "<=", "==", "!="])
-                with col3:
-                    val = st.number_input("Value", value=0.0)
-                query = f"`{filter_col}` {condition} {val}"
-                try:
-                    filtered_data = self.data_manager.data.query(query)
-                    st.markdown(
-                        f"**{len(filtered_data):,} rows** match: `{filter_col} {condition} {val}`"
-                    )
-                    st.dataframe(filtered_data, use_container_width=True)
-                except Exception as e:
-                    st.error(f"Filter error: {e}")
-
-        # ── Grouped Analysis ──
-        with tab3:
-            st.markdown("#### Grouped Analysis")
-            st.info("Aggregate data by category to compare performance or distribution across groups.")
-            if self.data_manager.data is not None:
-                cat_cols = self.data_manager.get_data_info()['categorical_columns']
-                num_cols = self.data_manager.get_data_info()['numeric_columns']
-                if cat_cols and num_cols:
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        group_col = st.selectbox("Group By", cat_cols)
-                    with c2:
-                        val_col = st.selectbox("Metric", num_cols)
-                    with c3:
-                        agg_func = st.selectbox("Aggregation", ["mean", "sum", "count", "min", "max"])
-                    grouped_df = self.stats_manager.get_grouped_stats(group_col, val_col, agg_func)
-                    if not grouped_df.empty:
-                        col_left, col_right = st.columns([1, 2])
-                        with col_left:
-                            st.dataframe(grouped_df, use_container_width=True, hide_index=True)
-                        with col_right:
-                            fig = self.visualizer.create_horizontal_bar_chart(
-                                grouped_df,
-                                x_col=grouped_df.columns[1],
-                                y_col=grouped_df.columns[0],
-                                title=f"{grouped_df.columns[1]} by {grouped_df.columns[0]}"
-                            )
-                            st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.warning("Both categorical and numeric columns are required for grouped analysis.")
-
-        # ── Top Relationships ──
-        with tab4:
-            st.markdown("#### Top Relationships — Pearson Correlation")
-            st.info("Identifies the strongest positive and negative linear relationships in your dataset.")
-            top_corr = self.stats_manager.get_top_correlations()
-            if not top_corr.empty:
-                st.dataframe(top_corr, use_container_width=True, hide_index=True)
-                insight = self.stats_manager.generate_correlation_insight()
-                st.info(insight)
+            self._sec("Grouped Aggregation & Comparison")
+            st.markdown("Aggregate a numeric metric by a categorical dimension to reveal segment differences.")
+            cat_cols = self.dm.get_data_info()['categorical_columns']
+            num_cols = self.dm.get_data_info()['numeric_columns']
+            if cat_cols and num_cols:
+                c1, c2, c3 = st.columns(3)
+                g_col   = c1.selectbox("Group By",    cat_cols)
+                v_col   = c2.selectbox("Metric",      num_cols)
+                agg_fn  = c3.selectbox("Aggregation", ["mean", "sum", "count", "min", "max", "std"])
+                grouped = self.sm.get_grouped_stats(g_col, v_col, agg_fn)
+                if not grouped.empty:
+                    col_left, col_right = st.columns([1, 2])
+                    with col_left:
+                        st.dataframe(grouped, use_container_width=True, hide_index=True)
+                    with col_right:
+                        fig = self.viz.create_horizontal_bar_chart(
+                            grouped, x_col=grouped.columns[1],
+                            y_col=grouped.columns[0],
+                            title=f"{grouped.columns[1]} by {grouped.columns[0]}")
+                        st.plotly_chart(fig, use_container_width=True)
             else:
-                st.info("Insufficient numeric data to calculate correlations.")
+                st.warning("Both categorical and numeric columns are required.")
 
         # ── Regression ──
-        with tab5:
-            st.markdown("#### Linear Regression Analysis")
-            st.info("Models the linear relationship between two variables and quantifies fit quality.")
-            if self.data_manager.data is not None:
-                numeric_cols = self.data_manager.get_data_info()['numeric_columns']
-                if len(numeric_cols) >= 2:
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        x_var = st.selectbox("Independent Variable (X)", numeric_cols, key='reg_x')
-                    with c2:
-                        y_var = st.selectbox("Dependent Variable (Y)", numeric_cols, index=1, key='reg_y')
-                    if x_var != y_var:
-                        reg_results = self.stats_manager.calculate_regression(x_var, y_var)
-                        if reg_results:
-                            m1, m2 = st.columns(2)
-                            with m1:
-                                st.metric("Equation", reg_results['equation'])
-                            with m2:
-                                st.metric("R-Squared", f"{reg_results['r_squared']:.4f}")
-                            fig = self.visualizer.create_regression_chart(
-                                self.data_manager.data, x_var, y_var,
-                                reg_results['slope'], reg_results['intercept']
-                            )
-                            st.plotly_chart(fig, use_container_width=True)
-                        else:
-                            st.error("Unable to compute regression model for selected variables.")
+        with tab3:
+            self._sec("Linear Regression Analysis")
+            st.markdown(
+                "Fits a linear model **y = mx + b** and reports goodness-of-fit (R²) "
+                "and statistical significance."
+            )
+            num_cols = self.dm.get_data_info()['numeric_columns']
+            if len(num_cols) >= 2:
+                c1, c2 = st.columns(2)
+                x_var = c1.selectbox("Independent Variable (X)", num_cols, key='rx')
+                y_var = c2.selectbox("Dependent Variable (Y)",   num_cols, index=1, key='ry')
+                if x_var != y_var:
+                    reg = self.sm.calculate_regression(x_var, y_var)
+                    if reg:
+                        m1, m2, m3, m4 = st.columns(4)
+                        m1.metric("Equation",  reg['equation'])
+                        m2.metric("R²",        f"{reg['r_squared']:.4f}")
+                        m3.metric("Slope",     f"{reg['slope']:.4f}")
+                        m4.metric("P-Value",   f"{reg['p_value']:.4f}")
+                        sig_text = ("Statistically significant (p < 0.05)"
+                                    if reg['significant'] else "Not statistically significant (p ≥ 0.05)")
+                        st.info(sig_text)
+                        fig = self.viz.create_regression_chart(
+                            self.dm.data, x_var, y_var, reg['slope'], reg['intercept'])
+                        st.plotly_chart(fig, use_container_width=True)
                     else:
-                        st.warning("Please select different variables for X and Y.")
+                        st.error("Could not compute regression model.")
                 else:
-                    st.warning("At least two numeric columns are required for regression analysis.")
+                    st.warning("Select different variables for X and Y.")
+            else:
+                st.warning("At least two numeric columns are required.")
 
         # ── Hypothesis Testing ──
-        with tab6:
-            st.markdown("#### Hypothesis Testing")
-            st.info("Statistical tests to validate assumptions or compare groups in your data.")
-            test_type = st.radio(
-                "Select Test",
-                ["Normality Test (Shapiro-Wilk)", "Independent T-Test"],
-                horizontal=True
-            )
+        with tab4:
+            self._sec("Statistical Hypothesis Testing")
+            test_type = st.radio("Test", ["Normality — Shapiro-Wilk", "Independent T-Test"],
+                                 horizontal=True)
 
-            if test_type == "Normality Test (Shapiro-Wilk)":
-                st.markdown("**Normality Test** — determines whether data follows a Gaussian distribution.")
-                numeric_cols = self.data_manager.get_data_info()['numeric_columns']
-                if numeric_cols:
-                    col_to_test = st.selectbox("Column", numeric_cols, key='norm_col')
+            if test_type == "Normality — Shapiro-Wilk":
+                st.markdown(
+                    "Tests whether a column's distribution is consistent with normality. "
+                    "**H₀:** Data is normally distributed. Reject if p ≤ 0.05."
+                )
+                num_cols = self.dm.get_data_info()['numeric_columns']
+                if num_cols:
+                    col_test = st.selectbox("Column to Test", num_cols)
                     if st.button("Run Normality Test"):
-                        results = self.stats_manager.perform_normality_test(col_to_test)
-                        if results:
-                            if 'warning' in results:
-                                st.warning(results['warning'])
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                st.metric("Test Statistic", f"{results['statistic']:.4f}")
-                            with c2:
-                                st.metric("P-Value", f"{results['p_value']:.4f}")
-                            if results['is_normal']:
+                        res = self.sm.perform_normality_test(col_test)
+                        if res:
+                            if 'warning' in res:
+                                st.warning(res['warning'])
+                            m1, m2 = st.columns(2)
+                            m1.metric("Shapiro-Wilk Statistic", f"{res['statistic']:.4f}")
+                            m2.metric("P-Value", f"{res['p_value']:.4f}")
+                            if res['is_normal']:
                                 st.success(
-                                    f"P-Value > 0.05. The distribution of '{col_to_test}' "
-                                    "is consistent with normality."
-                                )
+                                    f"p = {res['p_value']:.4f} > 0.05. Fail to reject H₀. "
+                                    f"'{col_test}' is consistent with a normal distribution.")
                             else:
                                 st.warning(
-                                    f"P-Value <= 0.05. The distribution of '{col_to_test}' "
-                                    "deviates significantly from normality."
-                                )
+                                    f"p = {res['p_value']:.4f} ≤ 0.05. Reject H₀. "
+                                    f"'{col_test}' deviates significantly from normality.")
+
+            else:
+                st.markdown(
+                    "Compares the means of two independent groups. "
+                    "**H₀:** The group means are equal. Reject if p ≤ 0.05."
+                )
+                cat_cols = self.dm.get_data_info()['categorical_columns']
+                num_cols = self.dm.get_data_info()['numeric_columns']
+                if cat_cols and num_cols:
+                    c1, c2 = st.columns(2)
+                    g_col = c1.selectbox("Grouping Column (2 groups)", cat_cols)
+                    v_col = c2.selectbox("Value Column",               num_cols)
+                    if st.button("Run T-Test"):
+                        res = self.sm.perform_ttest(g_col, v_col)
+                        if 'error' in res:
+                            st.error(res['error'])
+                        else:
+                            if 'warnings' in res:
+                                for w in res['warnings']:
+                                    st.warning(w)
+                            m1, m2, m3, m4 = st.columns(4)
+                            m1.metric("Group A",    res['group1'])
+                            m2.metric("Group B",    res['group2'])
+                            m3.metric("T-Statistic", f"{res['statistic']:.4f}")
+                            m4.metric("P-Value",    f"{res['p_value']:.4f}")
+                            if res['significant']:
+                                st.success(
+                                    f"p = {res['p_value']:.4f} < 0.05. Significant difference "
+                                    f"between '{res['group1']}' and '{res['group2']}'.")
+                            else:
+                                st.info(
+                                    f"p = {res['p_value']:.4f} ≥ 0.05. No significant difference "
+                                    "detected between the two groups.")
+                else:
+                    st.warning("Both categorical and numeric columns are required.")
+
+        # ── Pareto ──
+        with tab5:
+            self._sec("Pareto / 80-20 Analysis")
+            st.markdown(
+                "Identifies which categories drive 80% of the total value — "
+                "a core tool for resource prioritisation and decision-making."
+            )
+            cat_cols = self.dm.get_data_info()['categorical_columns']
+            num_cols = self.dm.get_data_info()['numeric_columns']
+            if cat_cols and num_cols:
+                c1, c2 = st.columns(2)
+                p_cat = c1.selectbox("Category Column", cat_cols, key='pcat')
+                p_val = c2.selectbox("Value Column",    num_cols, key='pval')
+                pareto_df = self.sm.get_pareto_analysis(p_cat, p_val)
+                if not pareto_df.empty:
+                    # Summary
+                    top80 = pareto_df[pareto_df['In Top 80%']]
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Categories driving 80%",   len(top80))
+                    m2.metric("Total categories",         len(pareto_df))
+                    m3.metric("Top category share",       f"{pareto_df['Share (%)'].iloc[0]:.1f}%")
+
+                    fig = self.viz.create_pareto_chart(pareto_df, p_cat, 'Total')
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.dataframe(pareto_df, use_container_width=True, hide_index=True)
+            else:
+                st.warning("Both categorical and numeric columns are required.")
+
+    # ──────────────────────────────────────────────────────────────
+    # PAGE: FORECASTING
+    # ──────────────────────────────────────────────────────────────
+
+    def page_forecasting(self):
+        if self.sm is None:
+            st.info("Upload a dataset to run forecasting.")
+            return
+
+        self._sec("Linear Trend Forecasting")
+        st.markdown(
+            "Projects future values using ordinary least-squares linear regression. "
+            "Best suited for datasets with a clear directional trend. "
+            "Shaded area represents the **95% confidence interval**."
+        )
+
+        num_cols  = self.dm.get_data_info()['numeric_columns']
+        date_cols = self.dm.identify_date_columns()
+
+        tab_idx, tab_ts = st.tabs(["Row-Index Forecast", "Time-Series Forecast"])
+
+        with tab_idx:
+            if num_cols:
+                c1, c2 = st.columns(2)
+                col     = c1.selectbox("Column to Forecast", num_cols, key='fc_col')
+                periods = c2.slider("Periods to Project", 5, 50, 10)
+                fdata = self.sm.get_linear_forecast(col, periods)
+                if fdata:
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Trend Direction",   fdata['direction'])
+                    m2.metric("Change per Record", f"{fdata['change_per_row']:.4f}")
+                    m3.metric("Projected End",     f"{fdata['forecast'][-1]:.3f}")
+                    fig = self.viz.create_forecast_chart(fdata, col)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.error("Unable to compute forecast for selected column.")
+            else:
+                st.warning("No numeric columns available.")
+
+        with tab_ts:
+            if date_cols and num_cols:
+                c1, c2, c3, c4 = st.columns(4)
+                d_col    = c1.selectbox("Date Column",  date_cols, key='ts_dc')
+                v_col    = c2.selectbox("Value Column", num_cols,  key='ts_vc')
+                freq     = c3.selectbox("Frequency",
+                                        ["D", "W", "M", "Q", "Y"],
+                                        index=2,
+                                        format_func=lambda x: {"D":"Daily","W":"Weekly","M":"Monthly","Q":"Quarterly","Y":"Yearly"}[x])
+                periods  = c4.slider("Forecast Periods", 3, 24, 6)
+                fdata = self.sm.get_time_series_forecast(d_col, v_col, freq, periods)
+                if fdata:
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Trend",          fdata['direction'])
+                    m2.metric("Historical Points", len(fdata['historical_y']))
+                    m3.metric("Forecast End",   f"{fdata['forecast'][-1]:.3f}")
+                    fig = self.viz.create_time_forecast_chart(fdata, v_col)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("Could not generate time-series forecast. Check that the date column parses correctly.")
+            else:
+                if not date_cols:
+                    st.warning("No date columns detected. Upload a dataset with a date/time column for time-series forecasting.")
                 else:
                     st.warning("No numeric columns available.")
 
-            elif test_type == "Independent T-Test":
-                st.markdown("**Independent T-Test** — compares the means of two independent groups.")
-                cat_cols = self.data_manager.get_data_info()['categorical_columns']
-                num_cols = self.data_manager.get_data_info()['numeric_columns']
-                if cat_cols and num_cols:
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        group_col = st.selectbox("Grouping Column (2 groups)", cat_cols, key='ttest_group')
-                    with c2:
-                        val_col = st.selectbox("Value Column", num_cols, key='ttest_val')
-                    if st.button("Run T-Test"):
-                        results = self.stats_manager.perform_ttest(group_col, val_col)
-                        if 'error' in results:
-                            st.error(results['error'])
-                        else:
-                            if 'warnings' in results:
-                                for warning in results['warnings']:
-                                    st.warning(warning)
-                            m1, m2, m3 = st.columns(3)
-                            with m1:
-                                st.metric("Comparison", f"{results['group1']} vs {results['group2']}")
-                            with m2:
-                                st.metric("Test Statistic", f"{results['statistic']:.4f}")
-                            with m3:
-                                st.metric("P-Value", f"{results['p_value']:.4f}")
-                            if results['significant']:
-                                st.success(
-                                    "P-Value < 0.05. There is a statistically significant "
-                                    "difference between the two groups."
-                                )
-                            else:
-                                st.info(
-                                    "P-Value >= 0.05. No statistically significant "
-                                    "difference was detected between the groups."
-                                )
-                else:
-                    st.warning("Both categorical and numeric columns are required for the T-Test.")
-
     # ──────────────────────────────────────────────────────────────
-    # DYNAMIC CHARTS
+    # PAGE: ANOMALY DETECTION
     # ──────────────────────────────────────────────────────────────
 
-    def render_dynamic_charts(self, selected_columns, chart_type):
-        """Render user-selected charts."""
-        if selected_columns is None or self.data_manager.data is None:
+    def page_anomaly(self):
+        if self.sm is None:
+            st.info("Upload a dataset to run anomaly detection.")
             return
 
-        st.markdown('<p class="section-label">Dynamic Visualizations</p>', unsafe_allow_html=True)
+        self._sec("Z-Score Anomaly Detection")
+        st.markdown(
+            "Flags records where values exceed **N standard deviations** from the column mean. "
+            "Z > 3 is the standard threshold for statistical outliers."
+        )
 
-        try:
-            if chart_type == "Histogram" and selected_columns:
-                fig = self.visualizer.create_histogram(self.data_manager.data, selected_columns)
+        num_cols  = self.dm.get_data_info()['numeric_columns']
+        c1, c2    = st.columns([1, 3])
+        threshold = c1.slider("Z-Score Threshold", 2.0, 5.0, 3.0, step=0.5)
+
+        summary = self.sm.get_anomaly_summary(threshold)
+        anom    = self.sm.get_zscore_anomalies(threshold)
+
+        if summary.empty:
+            st.success(f"No anomalies detected at Z > {threshold:.1f} across all numeric columns.")
+        else:
+            total = int(summary['Anomalies'].sum())
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Total Anomalous Records", total)
+            m2.metric("Columns Affected",        len(summary))
+            m3.metric("Max Z-Score",             f"{summary['Max Z-Score'].max():.2f}")
+
+            st.markdown("---")
+            self._sec("Anomaly Summary by Column")
+            st.dataframe(summary, use_container_width=True, hide_index=True)
+
+            st.markdown("---")
+            self._sec("Anomaly Visualisation")
+            col_pick = st.selectbox("Select Column to Visualise", list(anom.keys()))
+            if col_pick:
+                fig = self.viz.create_anomaly_chart(self.dm.data, col_pick, threshold)
                 st.plotly_chart(fig, use_container_width=True)
-                if self.stats_manager:
-                    insight = self.stats_manager.generate_distribution_insight(selected_columns)
-                    st.info(insight)
 
-            elif chart_type == "Scatter Plot" and selected_columns:
-                fig = self.visualizer.create_scatter(
-                    self.data_manager.data, selected_columns[0], selected_columns[1]
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                st.markdown("---")
+                self._sec(f"Flagged Records — {col_pick}")
+                st.dataframe(anom[col_pick], use_container_width=True, height=300)
 
-            elif chart_type == "Line Chart" and selected_columns:
-                fig = self.visualizer.create_line_chart(
-                    self.data_manager.data, selected_columns[0], selected_columns[1]
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                csv = anom[col_pick].to_csv(index=False).encode('utf-8')
+                st.download_button("Export Anomalies", data=csv,
+                                   file_name=f'anomalies_{col_pick}.csv', mime='text/csv')
 
-            elif chart_type == "Box Plot" and selected_columns:
-                fig = self.visualizer.create_box_plot(self.data_manager.data, selected_columns)
-                st.plotly_chart(fig, use_container_width=True)
-
-            elif chart_type == "Bar Chart" and selected_columns:
-                fig = self.visualizer.create_bar_chart(
-                    self.data_manager.data, selected_columns[0], selected_columns[1]
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-        except Exception as e:
-            st.error(f"Chart error: {e}")
+        # Interactive filtering
+        st.markdown("---")
+        self._sec("Threshold Sensitivity")
+        st.markdown("Observe how the number of anomalies changes with the threshold.")
+        rows = []
+        for t in [2.0, 2.5, 3.0, 3.5, 4.0, 5.0]:
+            s = self.sm.get_anomaly_summary(t)
+            rows.append({'Threshold (σ)': t,
+                         'Anomalous Records': int(s['Anomalies'].sum()) if not s.empty else 0,
+                         'Columns Affected':  len(s)})
+        sens_df = pd.DataFrame(rows)
+        st.dataframe(sens_df, use_container_width=True, hide_index=True)
 
     # ──────────────────────────────────────────────────────────────
-    # MAIN RUN
+    # PAGE: RAW DATA
     # ──────────────────────────────────────────────────────────────
 
-    def run(self):
-        """Run the dashboard application."""
-        self.render_sidebar()
-        selected_columns, chart_type = self.render_viz_settings()
+    def page_raw_data(self):
+        if self.dm.data is None:
+            st.info("Upload a dataset to view raw data.")
+            return
 
-        # Page header
+        self._sec("Dataset Explorer & Export")
+        all_cols = self.dm.get_data_info()['column_names']
+
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            show_cols = st.multiselect("Visible Columns", all_cols, default=all_cols)
+        with col2:
+            filter_col = st.selectbox("Filter by Column", ["None"] + all_cols)
+
+        df_show = self.dm.data.copy()
+        if filter_col != "None":
+            if pd.api.types.is_numeric_dtype(df_show[filter_col]):
+                mn = float(df_show[filter_col].min())
+                mx = float(df_show[filter_col].max())
+                rng = st.slider(f"Range: {filter_col}", mn, mx, (mn, mx))
+                df_show = df_show[(df_show[filter_col] >= rng[0]) &
+                                  (df_show[filter_col] <= rng[1])]
+            else:
+                vals = df_show[filter_col].unique()
+                sel  = st.multiselect(f"Values: {filter_col}", vals, default=vals)
+                df_show = df_show[df_show[filter_col].isin(sel)]
+
+        st.markdown(
+            f'<p style="font-size:12px;color:#64748b;margin-bottom:0.5rem;">'
+            f'Showing <b>{len(df_show):,}</b> of <b>{len(self.dm.data):,}</b> rows</p>',
+            unsafe_allow_html=True,
+        )
+        st.dataframe(df_show[show_cols], height=480, use_container_width=True)
+
+        c1, c2 = st.columns(2)
+        csv = df_show[show_cols].to_csv(index=False).encode('utf-8')
+        c1.download_button("Download as CSV", data=csv,
+                           file_name='export.csv', mime='text/csv')
+
+        st.markdown("---")
+        self._sec("Cleaning Report")
+        report = self.dm.get_cleaning_report()
+        if report:
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Initial Rows",          report['initial_rows'])
+            m2.metric("Duplicate Rows Removed", report['duplicates_removed'])
+            m3.metric("Columns with Imputation", len(report['values_filled']))
+            if report['values_filled']:
+                with st.expander("Imputed Values Detail"):
+                    for col, count in report['values_filled'].items():
+                        st.write(f"**{col}**: {count} value(s) filled")
+            if report['type_conversions']:
+                with st.expander("Type Conversions"):
+                    for conv in report['type_conversions']:
+                        st.write(f"- {conv}")
+        else:
+            st.info("No cleaning report available.")
+
+    # ──────────────────────────────────────────────────────────────
+    # EMPTY STATE
+    # ──────────────────────────────────────────────────────────────
+
+    def page_empty(self):
         st.markdown("""
-            <div class="page-header">
-                <div>
-                    <p class="page-header-title">Data Analysis Dashboard</p>
-                    <p class="page-header-sub">
-                        Upload a dataset to unlock automated insights, statistical analysis,
-                        and interactive visualisations.
-                    </p>
+            <div class="empty-state">
+                <p class="empty-title">No Dataset Loaded</p>
+                <p class="empty-sub">
+                    Upload a CSV or Excel file using the sidebar to begin.
+                    The platform will automatically clean, profile, and analyse your data.
+                </p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <p class="feat-name">Executive Summary</p>
+                        <p class="feat-desc">Auto-generated key findings, risks and data quality assessment on load.</p>
+                    </div>
+                    <div class="feat-card">
+                        <p class="feat-name">Correlation Analysis</p>
+                        <p class="feat-desc">Pearson correlation matrix and ranked relationship table.</p>
+                    </div>
+                    <div class="feat-card">
+                        <p class="feat-name">Volatility Analysis</p>
+                        <p class="feat-desc">Coefficient of Variation, skewness and kurtosis per column.</p>
+                    </div>
+                    <div class="feat-card">
+                        <p class="feat-name">Linear Forecasting</p>
+                        <p class="feat-desc">OLS trend projection with 95% confidence intervals — row-index and time-series modes.</p>
+                    </div>
+                    <div class="feat-card">
+                        <p class="feat-name">Anomaly Detection</p>
+                        <p class="feat-desc">Z-score flagging with threshold sensitivity analysis and one-click export.</p>
+                    </div>
+                    <div class="feat-card">
+                        <p class="feat-name">Pareto / 80-20</p>
+                        <p class="feat-desc">Identify the categories that drive 80% of your total value.</p>
+                    </div>
+                    <div class="feat-card">
+                        <p class="feat-name">Hypothesis Testing</p>
+                        <p class="feat-desc">Shapiro-Wilk normality and independent T-test with significance reporting.</p>
+                    </div>
+                    <div class="feat-card">
+                        <p class="feat-name">Grouped Aggregation</p>
+                        <p class="feat-desc">Compare segments by any metric and aggregation function.</p>
+                    </div>
                 </div>
-                <span class="page-header-badge">Analytics</span>
+                <p class="fmt-note">Supported formats: CSV &nbsp;·&nbsp; XLSX &nbsp;·&nbsp; XLS &nbsp;·&nbsp; Up to 200 MB</p>
             </div>
         """, unsafe_allow_html=True)
 
-        if self.data_manager.data is not None:
-            self.render_data_overview()
-            st.markdown("---")
-            self.render_decision_support()
-            st.markdown("---")
-            self.render_dynamic_charts(selected_columns, chart_type)
+    # ──────────────────────────────────────────────────────────────
+    # RUN
+    # ──────────────────────────────────────────────────────────────
 
-            # Raw data / export
-            st.markdown('<p class="section-label">Raw Data &amp; Export</p>', unsafe_allow_html=True)
-            with st.expander("View and Filter Dataset"):
-                all_cols = self.data_manager.get_data_info()['column_names']
-                show_cols = st.multiselect("Visible Columns", all_cols, default=all_cols)
-                df_to_show = self.data_manager.data.copy()
+    def run(self):
+        self.render_sidebar()
+        # Sync sm from session state after sidebar potentially updated it
+        self.sm = st.session_state.stats_manager
 
-                col1, col2 = st.columns(2)
-                with col1:
-                    filter_col = st.selectbox("Filter by Column", ["None"] + all_cols, key='raw_filter_col')
+        page = st.session_state.get('page', 'Overview')
+        self._topbar(page)
 
-                if filter_col != "None":
-                    with col2:
-                        if pd.api.types.is_numeric_dtype(df_to_show[filter_col]):
-                            min_val = float(df_to_show[filter_col].min())
-                            max_val = float(df_to_show[filter_col].max())
-                            val_range = st.slider(
-                                f"Range for {filter_col}", min_val, max_val, (min_val, max_val)
-                            )
-                            df_to_show = df_to_show[
-                                (df_to_show[filter_col] >= val_range[0]) &
-                                (df_to_show[filter_col] <= val_range[1])
-                            ]
-                        else:
-                            unique_vals = df_to_show[filter_col].unique()
-                            selected_vals = st.multiselect(
-                                f"Values for {filter_col}", unique_vals, default=unique_vals
-                            )
-                            df_to_show = df_to_show[df_to_show[filter_col].isin(selected_vals)]
+        if self.dm.data is None:
+            self.page_empty()
+            return
 
-                st.markdown(f"Showing **{len(df_to_show):,}** rows")
-                st.dataframe(df_to_show[show_cols], height=400, use_container_width=True)
-
-                csv = df_to_show[show_cols].to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="Download CSV",
-                    data=csv,
-                    file_name='export.csv',
-                    mime='text/csv',
-                )
-
-        else:
-            # Empty / welcome state
-            st.markdown("""
-                <div class="empty-state">
-                    <div class="empty-state-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                             xmlns="http://www.w3.org/2000/svg">
-                            <path d="M4 4h16v4H4V4zm0 6h16v10H4V10zm4 2v6m4-6v6m4-6v6"
-                                  stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"
-                                  stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <p class="empty-state-title">No dataset loaded</p>
-                    <p class="empty-state-sub">
-                        Upload a CSV or Excel file using the sidebar panel on the left
-                        to begin your analysis.
-                    </p>
-                    <div class="feature-grid">
-                        <div class="feature-card">
-                            <p class="feature-card-label">Automated Cleaning</p>
-                            <p class="feature-card-desc">Duplicate removal and missing value
-                            imputation with a full change log.</p>
-                        </div>
-                        <div class="feature-card">
-                            <p class="feature-card-label">Dataset Health Score</p>
-                            <p class="feature-card-desc">Quality rating based on completeness,
-                            duplicates and outlier prevalence.</p>
-                        </div>
-                        <div class="feature-card">
-                            <p class="feature-card-label">Statistical Testing</p>
-                            <p class="feature-card-desc">Normality tests, T-tests and
-                            Pearson correlation analysis.</p>
-                        </div>
-                        <div class="feature-card">
-                            <p class="feature-card-label">Interactive Charts</p>
-                            <p class="feature-card-desc">Histograms, scatter plots, regression,
-                            heatmaps and more.</p>
-                        </div>
-                        <div class="feature-card">
-                            <p class="feature-card-label">Decision Support</p>
-                            <p class="feature-card-desc">Outlier detection, group comparison
-                            and dynamic filtering tools.</p>
-                        </div>
-                        <div class="feature-card">
-                            <p class="feature-card-label">Export</p>
-                            <p class="feature-card-desc">Download filtered or cleaned datasets
-                            as CSV with one click.</p>
-                        </div>
-                    </div>
-                    <p class="format-note">Supported formats: CSV &nbsp;·&nbsp; XLSX &nbsp;·&nbsp; XLS</p>
-                </div>
-            """, unsafe_allow_html=True)
+        if page == "Overview":
+            self.page_overview()
+        elif page == "Exploration":
+            self.page_exploration()
+        elif page == "Statistical Analysis":
+            self.page_stats()
+        elif page == "Forecasting":
+            self.page_forecasting()
+        elif page == "Anomaly Detection":
+            self.page_anomaly()
+        elif page == "Raw Data":
+            self.page_raw_data()
